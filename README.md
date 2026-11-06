@@ -1,6 +1,17 @@
 # Plastic Waste Dashboard
 
-Public Vercel dashboard for injection-molding production waste. The page reads the public `WasteRecord` tab and only returns production date, part identifiers/names, produced quantity, NG quantity, and defect counts. PO numbers, remarks, and machine numbers are excluded.
+Public Vercel dashboard for injection-molding production waste. The dashboard reads the public `WasteRecord`, `Part`, and `Part.Materials` tabs. PO numbers, remarks, and machine numbers are excluded from its output.
+
+## Features
+
+- Production quality overview with date and part search filters
+- Waste record table with text search, date filters, scrolling, and detail cards
+- Part details with defect charts
+- Estimated material waste by material in kilograms
+
+## Material estimate
+
+Estimated material waste is calculated as `(part weight + runner weight) × NG quantity`, distributed by each part's material ratios. Duplicate part/material rows are combined and the ratios are normalized for the estimate. The chart is an estimate and does not include the `Loss (%)` field. Parts without a valid part/material mapping are omitted from the material chart.
 
 ## Run locally
 
@@ -14,8 +25,4 @@ The Google Sheet must remain viewable by anyone with the link for the API route 
 
 ## Deploy
 
-Connect this repository to a Vercel project and deploy the `main` branch to production. The Vercel site can be public.
-
-## Data note
-
-Material composition is not included in the dashboard yet. The source `Part.Materials` tab currently contains repeated PartID/MaterialID pairs and ratios that do not total 1 for some parts, so joining it would overstate material quantities.
+The `main` branch is connected to the Vercel project for automatic production deployments.
