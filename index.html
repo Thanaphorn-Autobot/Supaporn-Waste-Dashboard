@@ -22,6 +22,11 @@
       </header>
 
       <main>
+        <nav class="page-nav" aria-label="เมนูหลัก">
+          <button class="nav-tab active" type="button" data-page="dashboard-page">ภาพรวม Dashboard</button>
+          <button class="nav-tab" type="button" data-page="records-page">รายการของเสีย</button>
+        </nav>
+        <div id="dashboard-page" class="page-view">
         <section class="page-heading">
           <div>
             <p class="eyebrow">QUALITY OVERVIEW <span>•</span> INJECTION MOLDING</p>
@@ -34,7 +39,7 @@
         <section class="filterbar" aria-label="ตัวกรองข้อมูล">
           <label>ตั้งแต่<input type="date" id="from-date" /></label>
           <label>ถึง<input type="date" id="to-date" /></label>
-          <label class="part-filter">ชิ้นงาน<select id="part-filter"><option value="">ทุกชิ้นงาน</option></select></label>
+          <label class="part-filter">ค้นหาชิ้นงาน<input id="part-filter" type="search" list="part-options" placeholder="Part No / Name / Sub No / Sub Name" /><datalist id="part-options"></datalist></label>
           <button class="clear-filter" id="clear-filter" type="button">ล้างตัวกรอง</button>
           <span class="range-label" id="range-label">ข้อมูลทั้งหมด</span>
         </section>
@@ -61,7 +66,30 @@
 
         <section class="panel table-panel">
           <div class="panel-head"><div><p class="panel-kicker">PART PERFORMANCE</p><h2>ชิ้นงานที่มีของเสียสูง</h2></div><span class="unit-tag">10 อันดับ</span></div>
-          <div class="table-scroll"><table><thead><tr><th>อันดับ</th><th>Part No</th><th>ชื่อชิ้นงาน</th><th class="number">จำนวนผลิต</th><th class="number">NG</th><th class="number">อัตรา NG</th><th>สัดส่วน NG</th></tr></thead><tbody id="part-table"><tr><td colspan="7" class="loading">กำลังโหลด…</td></tr></tbody></table></div>
+          <div class="table-scroll"><table><thead><tr><th>อันดับ</th><th>Part No</th><th>ชื่อชิ้นงาน</th><th class="number">จำนวนผลิต</th><th class="number">NG</th><th class="number">อัตรา NG</th><th>สัดส่วน NG</th><th>รายละเอียด</th></tr></thead><tbody id="part-table"><tr><td colspan="8" class="loading">กำลังโหลด…</td></tr></tbody></table></div>
+        </section>
+
+        <section class="panel material-panel">
+          <div class="panel-head"><div><p class="panel-kicker">MATERIAL WASTE ESTIMATE</p><h2>น้ำหนักของเสียแยกตามวัสดุ</h2></div><span class="unit-tag">กิโลกรัม (kg)</span></div>
+          <div class="bar-chart material-chart" id="material-chart"><div class="loading">กำลังโหลด…</div></div>
+          <div class="panel-note">ประมาณจากน้ำหนักชิ้นงานและ runner คูณจำนวน NG และสัดส่วนวัสดุใน Part.Materials</div>
+        </section>
+        </div>
+
+        <section id="records-page" class="page-view" hidden>
+          <section class="page-heading records-heading">
+            <div><p class="eyebrow">WASTE LOG <span>•</span> PRODUCTION RECORDS</p><h1>รายการของเสีย <span>ค้นหาและดูรายละเอียด</span></h1><p class="intro">ค้นหารายการด้วยชิ้นงานหรือสาเหตุ พร้อมกรองตามวันที่</p></div>
+            <span id="record-count" class="unit-tag">0 รายการ</span>
+          </section>
+          <section class="filterbar records-filterbar" aria-label="ค้นหาและกรองรายการของเสีย">
+            <label class="record-search">ค้นหา<input id="record-search" type="search" placeholder="Part No, ชื่อชิ้นงาน, Part Sub หรือสาเหตุ" /></label>
+            <label>ตั้งแต่<input type="date" id="records-from" /></label>
+            <label>ถึง<input type="date" id="records-to" /></label>
+            <button class="clear-filter" id="clear-record-filters" type="button">ล้างตัวกรอง</button>
+          </section>
+          <section class="panel table-panel records-panel">
+            <div class="records-scroll"><table><thead><tr><th>วันที่ผลิต</th><th>Part No</th><th>ชื่อชิ้นงาน</th><th>Part Sub No</th><th>Part Sub Name</th><th class="number">จำนวนผลิต</th><th class="number">NG</th><th>สาเหตุ</th><th></th></tr></thead><tbody id="records-table"><tr><td colspan="9" class="loading">กำลังโหลด…</td></tr></tbody></table></div>
+          </section>
         </section>
 
         <aside id="data-warning" class="data-warning" hidden></aside>
@@ -70,6 +98,7 @@
 
       <footer><span>Plastic Waste Monitor</span><span>ข้อมูลแสดงผลเป็นภาพรวม ไม่แสดง PO หมายเหตุ หรือเลขเครื่องจักร</span></footer>
     </div>
+    <dialog id="detail-dialog" class="detail-dialog"><form method="dialog"><button class="dialog-close" aria-label="ปิด">×</button></form><div id="detail-content"></div></dialog>
     <script src="/app.js"></script>
   </body>
 </html>

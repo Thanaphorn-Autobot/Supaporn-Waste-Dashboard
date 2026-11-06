@@ -1,82 +1,102 @@
 const SHEET_ID = "1Oh4I2T-GyDrMHYwCiCrVGlJLUH1kwqwo8Jgs1Z9tDDM";
-const TAB = "WasteRecord";
+const excluded = new Set(["วันที่ผลิต", "date", "production date", "partid", "part no", "partname", "part name", "po no", "จำนวนสั่งผลิต", "จำนวนผลิต", "ค้างผลิต", "ng", "% ng", "remark", "m/c no"]);
+const clean = value => String(value ?? "").trim().toLocaleLowerCase("th").replace(/\s+/g, " ");
 
-const excluded = new Set([
-  "วันที่ผลิต", "date", "production date", "partid", "part no", "part name",
-  "po no", "จำนวนสั่งผลิต", "จำนวนผลิต", "ค้างผลิต", "ng", "% ng", "remark", "m/c no",
-]);
-
-function clean(value) {
-  return String(value ?? "").trim().toLocaleLowerCase("th").replace(/\s+/g, " ");
-}
-
-function dateValue(value, formatted) {
-  if (value instanceof Date) return value.toISOString().slice(0, 10);
-  if (typeof value === "number" && value > 20000) {
-    const serial = new Date(Date.UTC(1899, 11, 30) + Math.round(value) * 86400000);
-    return serial.toISOString().slice(0, 10);
-  }
+function dateValue(value) {
   if (typeof value === "string") {
     const m = value.match(/^Date\((\d+),(\d+),(\d+).*\)$/);
-    if (m) return `${m[1]}-${String(Number(m[2]) + 1).padStart(2, "0")}-${String(m[3]).padStart(2, "0")}`;
-    const parsed = new Date(value);
-    if (!Number.isNaN(parsed.getTime())) return parsed.toISOString().slice(0, 10);
+    if (m) return m[1] + "-" + String(Number(m[2]) + 1).padStart(2, "0") + "-" + String(m[3]).padStart(2, "0");
+    const local = value.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})$/);
+    if (local) return local[1] + "-" + local[2].padStart(2, "0") + "-" + local[3].padStart(2, "0");
   }
-  const parsed = new Date(formatted || value);
+  if (typeof value === "number" && value > 20000) return new Date(Date.UTC(1899, 11, 30) + Math.round(value) * 86400000).toISOString().slice(0, 10);
+  const parsed = new Date(value);
   return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString().slice(0, 10);
+}
+
+async function readTab(tab) {
+  const url = "https://docs.google.com/spreadsheets/d/" + SHEET_ID + "/gviz/tq?tqx=out:json&sheet=" + encodeURIComponent(tab);
+  const response = await fetch(url, { headers: { Accept: "application/json,text/plain,*/*" } });
+  if (!response.ok) throw new Error("Google Sheets (" + tab + ") returned " + response.status);
+  const text = await response.text(), start = text.indexOf("("), end = text.lastIndexOf(")");
+  if (start < 0 || end <= start) throw new Error("Google Sheets tab " + tab + " did not return a readable table");
+  const table = JSON.parse(text.slice(start + 1, end)).table;
+  if (!table?.cols || !table?.rows) throw new Error("The " + tab + " tab was not found or has no rows");
+  const labels = table.cols.map((col, i) => clean(col.label || col.id || "column " + (i + 1)));
+  return table.rows.map(row => Object.fromEntries(labels.map((label, i) => [label, row.c?.[i]?.v ?? null]).filter(pair => pair[1] !== null)));
+}
+function pick(row, ...names) {
+  for (const name of names) if (row[clean(name)] != null) return row[clean(name)];
+  return "";
+}
+function numeric(value) {
+  const n = Number(String(value ?? "").replace(/[% ,]/g, ""));
+  return Number.isFinite(n) ? n : 0;
 }
 
 export default async function handler(req, res) {
   if (req.method !== "GET") return res.status(405).json({ error: "Method not allowed" });
   try {
-    const source = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(TAB)}`;
-    const response = await fetch(source, { headers: { Accept: "application/json,text/plain,*/*" } });
-    if (!response.ok) throw new Error(`Google Sheets returned ${response.status}`);
-    const text = await response.text();
-    const start = text.indexOf("(");
-    const end = text.lastIndexOf(")");
-    if (start < 0 || end <= start) throw new Error("Google Sheets did not return a readable table");
-    const payload = JSON.parse(text.slice(start + 1, end));
-    const table = payload.table;
-    if (!table?.cols || !table?.rows) throw new Error("The WasteRecord tab was not found or has no rows");
-
-    const labels = table.cols.map((col, i) => clean(col.label || col.id || `column ${i + 1}`));
-    const findCol = (...needles) => labels.findIndex(label => needles.some(needle => label === clean(needle)));
-    const dateIndex = findCol("วันที่ผลิต", "date", "production date");
-    const partNoIndex = findCol("part no", "partno", "รหัสชิ้นงาน");
-    const partNameIndex = findCol("part name", "partname", "ชื่อชิ้นงาน");
-    const producedIndex = findCol("จำนวนผลิต", "produced qty", "produced");
-    const ngIndex = findCol("ng", "จำนวน ng");
-    const partIdIndex = findCol("partid");
-    if ([dateIndex, partNoIndex, producedIndex, ngIndex].some(i => i < 0)) {
-      throw new Error("Missing required columns: วันที่ผลิต, Part No, จำนวนผลิต, NG");
+    const [wasteRows, partRows, mappingRows] = await Promise.all([readTab("WasteRecord"), readTab("Part"), readTab("Part.Materials")]);
+    const partsById = new Map();
+    for (const row of partRows) {
+      const id = String(pick(row, "PartID")).trim();
+      if (id) partsById.set(id, {
+        partName: String(pick(row, "Part Name")).trim(),
+        partSubNo: String(pick(row, "Part Sub No")).trim(),
+        partSubName: String(pick(row, "Part Sub Name")).trim(),
+        partWeight: numeric(pick(row, "Part (g)")),
+        runnerWeight: numeric(pick(row, "Runner (g)")),
+      });
     }
+    const materialNames = new Map(), mixByPart = new Map();
+    for (const row of mappingRows) {
+      const materialId = String(pick(row, "MaterialID")).trim();
+      const materialName = String(pick(row, "Mat'l Name", "Material Name", "Mat'l No")).trim();
+      if (materialId && materialName) materialNames.set(materialId, materialName);
+      const partId = String(pick(row, "PartID")).trim(), ratio = numeric(pick(row, "Ratio"));
+      if (!partId || !materialId || ratio <= 0) continue;
+      const mix = mixByPart.get(partId) || new Map();
+      mix.set(materialId, (mix.get(materialId) || 0) + ratio);
+      mixByPart.set(partId, mix);
+    }
+    const labels = Object.keys(wasteRows[0] || {});
+    const find = (...names) => names.map(clean).find(key => labels.includes(key));
+    const dateKey = find("วันที่ผลิต", "date", "production date");
+    const partNoKey = find("part no", "partno", "รหัสชิ้นงาน");
+    const partNameKey = find("part name", "partname", "ชื่อชิ้นงาน");
+    const producedKey = find("จำนวนผลิต", "produced qty", "produced");
+    const ngKey = find("ng", "จำนวน ng"), partIdKey = clean("PartID");
+    if ([dateKey, partNoKey, producedKey, ngKey].some(key => !key)) throw new Error("Missing required columns: วันที่ผลิต, Part No, จำนวนผลิต, NG");
 
-    const defectIndexes = labels.map((label, i) => ({ label: table.cols[i].label || label, key: label, i }))
-      .filter(col => !excluded.has(col.key) && col.i !== partIdIndex);
-    const records = table.rows.map(row => {
-      const cells = row.c || [];
-      const value = i => cells[i]?.v ?? null;
-      const number = i => { const n = Number(value(i)); return Number.isFinite(n) ? n : 0; };
+    const records = wasteRows.map(row => {
+      const partId = String(row[partIdKey] ?? "").trim(), part = partsById.get(partId) || {};
       const defects = {};
-      for (const col of defectIndexes) {
-        const count = number(col.i);
-        if (count > 0) defects[col.label] = count;
+      for (const [key, value] of Object.entries(row)) {
+        if (!excluded.has(key) && key !== partIdKey) {
+          const count = numeric(value);
+          if (count > 0) defects[key] = count;
+        }
+      }
+      const ng = numeric(row[ngKey]), mix = mixByPart.get(partId);
+      const totalRatio = mix ? [...mix.values()].reduce((sum, ratio) => sum + ratio, 0) : 0;
+      const materialWasteKg = {};
+      if (mix && totalRatio > 0 && ng > 0) {
+        const grams = numeric(part.partWeight) + numeric(part.runnerWeight);
+        for (const [id, ratio] of mix) materialWasteKg[materialNames.get(id) || id] = ng * grams * ratio / totalRatio / 1000;
       }
       return {
-        date: dateValue(value(dateIndex), cells[dateIndex]?.f),
-        partNo: String(value(partNoIndex) ?? "").trim(),
-        partName: String(value(partNameIndex) ?? "").trim(),
-        produced: number(producedIndex),
-        ng: number(ngIndex),
-        defects,
-        partIdMissing: partIdIndex >= 0 && /^#(N\/A|REF!|VALUE!)/i.test(String(value(partIdIndex) ?? "")),
+        date: dateValue(row[dateKey]), partId, partNo: String(row[partNoKey] ?? "").trim(),
+        partName: String(row[partNameKey] ?? part.partName ?? "").trim(),
+        partSubNo: String(part.partSubNo ?? "").trim(), partSubName: String(part.partSubName ?? "").trim(),
+        produced: numeric(row[producedKey]), ng, defects, materialWasteKg,
+        partIdMissing: /^#(N\/A|REF!|VALUE!)/i.test(partId),
       };
-    }).filter(r => r.date && (r.partNo || r.produced || r.ng));
+    }).filter(record => record.date && (record.partNo || record.produced || record.ng));
 
     res.setHeader("Cache-Control", "public, s-maxage=300, stale-while-revalidate=600");
-    return res.status(200).json({ records, unresolvedPartIds: records.filter(r => r.partIdMissing).length, refreshedAt: new Date().toISOString() });
+    return res.status(200).json({ records, unresolvedPartIds: records.filter(record => record.partIdMissing).length, refreshedAt: new Date().toISOString() });
   } catch (error) {
-    return res.status(502).json({ error: "Unable to read the Google Sheet. Check that the WasteRecord tab is viewable by the Vercel function.", detail: error.message });
+    return res.status(502).json({ error: "Unable to read the Google Sheet. Check that its data tabs are viewable by the Vercel function.", detail: error.message });
   }
 }
