@@ -81,14 +81,16 @@
             <div><p class="eyebrow">WASTE LOG <span>•</span> PRODUCTION RECORDS</p><h1>รายการของเสีย <span>ค้นหาและดูรายละเอียด</span></h1><p class="intro">ค้นหารายการด้วยชิ้นงานหรือสาเหตุ พร้อมกรองตามวันที่</p></div>
             <span id="record-count" class="unit-tag">0 รายการ</span>
           </section>
-          <section class="filterbar records-filterbar" aria-label="ค้นหาและกรองรายการของเสีย">
+          <form id="records-form" class="filterbar records-filterbar" aria-label="ค้นหาและกรองรายการของเสีย">
             <label class="record-search">ค้นหา<input id="record-search" type="search" placeholder="Part No, ชื่อชิ้นงาน, Part Sub หรือสาเหตุ" /></label>
             <label>ตั้งแต่<input type="date" id="records-from" /></label>
             <label>ถึง<input type="date" id="records-to" /></label>
+            <button class="search-submit" type="submit">ค้นหา</button>
             <button class="clear-filter" id="clear-record-filters" type="button">ล้างตัวกรอง</button>
-          </section>
+          </form>
           <section class="panel table-panel records-panel">
             <div class="records-scroll"><table><thead><tr><th>วันที่ผลิต</th><th>Part No</th><th>ชื่อชิ้นงาน</th><th>Part Sub No</th><th>Part Sub Name</th><th class="number">จำนวนผลิต</th><th class="number">NG</th><th>สาเหตุ</th><th></th></tr></thead><tbody id="records-table"><tr><td colspan="9" class="loading">กำลังโหลด…</td></tr></tbody></table></div>
+            <div class="pagination"><span id="page-summary">กำลังโหลดรายการล่าสุด…</span><div><button class="small-action" id="records-prev" type="button" disabled>ก่อนหน้า</button><button class="small-action" id="records-next" type="button" disabled>ถัดไป</button></div></div>
           </section>
         </section>
 
