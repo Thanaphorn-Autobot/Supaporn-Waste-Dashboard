@@ -11,7 +11,7 @@ Public Vercel dashboard for injection-molding production waste. The dashboard re
 
 ## Material estimate
 
-Estimated material waste is calculated as `(part weight + runner weight) × NG quantity`, distributed by each part's material ratios. Duplicate part/material rows are combined and the ratios are normalized for the estimate. The chart is an estimate and does not include the `Loss (%)` field. Parts without a valid part/material mapping are omitted from the material chart.
+Estimated material waste is calculated as `part weight × NG quantity`, distributed by each part's material ratios. Runner weight is excluded. Duplicate part/material rows are combined and the ratios are normalized for the estimate. The chart is an estimate and does not include the `Loss (%)` field. Parts without a valid part/material mapping are omitted from the material chart.
 
 ## Run locally
 
