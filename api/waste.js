@@ -94,6 +94,17 @@ export default async function handler(req, res) {
     }).filter(record => record.date && (record.partNo || record.produced || record.ng));
 
     res.setHeader("Cache-Control", "public, s-maxage=300, stale-while-revalidate=600");
+    if (req.query?.view === "records") {
+      const query = String(req.query.q || "").trim().toLocaleLowerCase("th");
+      const from = String(req.query.from || "");
+      const to = String(req.query.to || "");
+      const offset = Math.max(0, Number.parseInt(req.query.offset || "0", 10) || 0);
+      const filtered = records.filter(record => {
+        const searchable = [record.partNo, record.partName, record.partSubNo, record.partSubName, ...Object.keys(record.defects)].join(" ").toLocaleLowerCase("th");
+        return (!from || record.date >= from) && (!to || record.date <= to) && (!query || searchable.includes(query));
+      }).sort((a, b) => b.date.localeCompare(a.date));
+      return res.status(200).json({ records: filtered.slice(offset, offset + 100), total: filtered.length, offset, pageSize: 100, refreshedAt: new Date().toISOString() });
+    }
     return res.status(200).json({ records, unresolvedPartIds: records.filter(record => record.partIdMissing).length, refreshedAt: new Date().toISOString() });
   } catch (error) {
     return res.status(502).json({ error: "Unable to read the Google Sheet. Check that its data tabs are viewable by the Vercel function.", detail: error.message });
