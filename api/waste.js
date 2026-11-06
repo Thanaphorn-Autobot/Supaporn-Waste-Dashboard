@@ -80,4 +80,3 @@ export default async function handler(req, res) {
     return res.status(502).json({ error: "Unable to read the Google Sheet. Check that the WasteRecord tab is viewable by the Vercel function.", detail: error.message });
   }
 }
-

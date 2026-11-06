@@ -19,4 +19,3 @@ Connect this repository to a Vercel project and deploy the `main` branch to prod
 ## Data note
 
 Material composition is not included in the dashboard yet. The source `Part.Materials` tab currently contains repeated PartID/MaterialID pairs and ratios that do not total 1 for some parts, so joining it would overstate material quantities.
-

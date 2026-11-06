@@ -123,4 +123,3 @@ $("#clear-filter").addEventListener("click", () => { $("#from-date").value = "";
 $("#refresh").addEventListener("click", loadData);
 $("#retry").addEventListener("click", loadData);
 loadData();
-
