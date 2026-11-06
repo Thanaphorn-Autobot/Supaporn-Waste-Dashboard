@@ -2,7 +2,7 @@ const $ = selector => document.querySelector(selector);
 const nf = new Intl.NumberFormat("th-TH", { maximumFractionDigits: 0 });
 const pf = new Intl.NumberFormat("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const kgf = new Intl.NumberFormat("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const state = { records: [], unresolved: 0 };
+const state = { records: [], unresolved: 0, recordRows: [], recordTotal: 0, recordOffset: 0, recordsLoaded: false, recordsBusy: false };
 const monthNames = new Intl.DateTimeFormat("th-TH", { month: "short", year: "2-digit" });
 
 function escapeHTML(value) {
@@ -79,10 +79,26 @@ function renderMaterials(rows) {
   $("#material-chart").innerHTML = items.length ? items.map(([name,kg]) => '<div class="bar-row"><span class="bar-name" title="' + escapeHTML(name) + '">' + escapeHTML(name) + '</span><span class="bar-track"><span class="bar-fill material-fill" style="width:' + Math.max(2,kg/max*100) + '%"></span></span><span class="bar-value">' + kgf.format(kg) + '</span></div>').join("") : '<div class="loading">ไม่มีข้อมูลวัสดุที่คำนวณได้</div>';
 }
 function renderRecords() {
-  const from = $("#records-from").value, to = $("#records-to").value, q = $("#record-search").value.trim().toLocaleLowerCase("th");
-  const rows = state.records.map((r,index)=>({...r,index})).filter(r => (!from || r.date >= from) && (!to || r.date <= to) && (!q || (partText(r) + " " + Object.keys(r.defects || {}).join(" ")).toLocaleLowerCase("th").includes(q))).sort((a,b)=>b.date.localeCompare(a.date));
-  $("#record-count").textContent = nf.format(rows.length) + " รายการ";
-  $("#records-table").innerHTML = rows.length ? rows.map(r => '<tr><td>' + shortDate(r.date) + '</td><td class="part-code">' + escapeHTML(r.partNo || "—") + '</td><td class="part-name">' + escapeHTML(r.partName || "—") + '</td><td>' + escapeHTML(r.partSubNo || "—") + '</td><td class="part-name">' + escapeHTML(r.partSubName || "—") + '</td><td class="number">' + nf.format(r.produced) + '</td><td class="number rate-cell">' + nf.format(r.ng) + '</td><td class="record-causes">' + escapeHTML(Object.keys(r.defects || {}).slice(0,2).join(", ") || "—") + '</td><td><button class="small-action" data-record-detail="' + r.index + '">เปิดการ์ด</button></td></tr>').join("") : '<tr><td colspan="9" class="loading">ไม่พบรายการที่ตรงกับเงื่อนไข</td></tr>';
+  const rows = state.recordRows;
+  $("#record-count").textContent = nf.format(state.recordTotal) + " รายการ";
+  $("#page-summary").textContent = state.recordsBusy ? "กำลังค้นหา…" : state.recordTotal ? "แสดง " + nf.format(state.recordOffset + 1) + "–" + nf.format(Math.min(state.recordOffset + rows.length, state.recordTotal)) + " จาก " + nf.format(state.recordTotal) + " รายการ" : "ไม่พบรายการที่ตรงกับเงื่อนไข";
+  $("#records-prev").disabled = state.recordsBusy || state.recordOffset <= 0;
+  $("#records-next").disabled = state.recordsBusy || state.recordOffset + rows.length >= state.recordTotal;
+  $("#records-table").innerHTML = rows.length ? rows.map((r,index) => '<tr><td>' + shortDate(r.date) + '</td><td class="part-code">' + escapeHTML(r.partNo || "—") + '</td><td class="part-name">' + escapeHTML(r.partName || "—") + '</td><td>' + escapeHTML(r.partSubNo || "—") + '</td><td class="part-name">' + escapeHTML(r.partSubName || "—") + '</td><td class="number">' + nf.format(r.produced) + '</td><td class="number rate-cell">' + nf.format(r.ng) + '</td><td class="record-causes">' + escapeHTML(Object.keys(r.defects || {}).slice(0,2).join(", ") || "—") + '</td><td><button class="small-action" data-record-detail="' + index + '">เปิดการ์ด</button></td></tr>').join("") : '<tr><td colspan="9" class="loading">ไม่พบรายการที่ตรงกับเงื่อนไข</td></tr>';
+}
+async function loadRecordPage(offset = 0) {
+  state.recordsBusy = true; renderRecords();
+  const params = new URLSearchParams({ view: "records", q: $("#record-search").value.trim(), from: $("#records-from").value, to: $("#records-to").value, offset: String(offset) });
+  try {
+    const response = await fetch("/api/waste?" + params.toString(), { cache: "no-store" });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.detail || payload.error || "ไม่สามารถค้นหารายการได้");
+    state.recordRows = payload.records || []; state.recordTotal = payload.total || 0; state.recordOffset = payload.offset || 0; state.recordsLoaded = true;
+  } catch (error) {
+    state.recordRows = []; state.recordTotal = 0; $("#page-summary").textContent = error.message;
+  } finally {
+    state.recordsBusy = false; renderRecords();
+  }
 }
 function showDialog(html) {
   $("#detail-content").innerHTML = html;
@@ -93,7 +109,7 @@ function renderMiniBars(defects) {
   return items.length ? '<div class="detail-bars">' + items.map(([name,count])=>'<div class="bar-row"><span class="bar-name">' + escapeHTML(name) + '</span><span class="bar-track"><span class="bar-fill" style="width:' + Math.max(2,count/max*100) + '%"></span></span><span class="bar-value">' + nf.format(count) + '</span></div>').join("") + '</div>' : '<p class="empty-note">ไม่มีข้อมูลสาเหตุของเสีย</p>';
 }
 function showRecord(index) {
-  const r = state.records[index]; if (!r) return;
+  const r = state.recordRows[index]; if (!r) return;
   showDialog('<p class="panel-kicker">WASTE RECORD</p><h2>การ์ดรายการของเสีย</h2><p class="detail-date">' + shortDate(r.date) + '</p><div class="detail-metrics"><div><small>Part No</small><strong>' + escapeHTML(r.partNo || "—") + '</strong></div><div><small>Part Name</small><strong>' + escapeHTML(r.partName || "—") + '</strong></div><div><small>Part Sub No</small><strong>' + escapeHTML(r.partSubNo || "—") + '</strong></div><div><small>Part Sub Name</small><strong>' + escapeHTML(r.partSubName || "—") + '</strong></div><div><small>จำนวนผลิต</small><strong>' + nf.format(r.produced) + '</strong></div><div><small>NG</small><strong>' + nf.format(r.ng) + '</strong></div></div><h3>สาเหตุของเสีย</h3>' + renderMiniBars(r.defects));
 }
 function showPart(key) {
@@ -123,7 +139,7 @@ async function loadData() {
     $("#updated-at").textContent = "อัปเดต " + new Intl.DateTimeFormat("th-TH",{hour:"2-digit",minute:"2-digit"}).format(new Date(payload.refreshedAt || Date.now()));
     $("#data-warning").hidden = !state.unresolved;
     if (state.unresolved) $("#data-warning").textContent = "พบ " + nf.format(state.unresolved) + " รายการที่ PartID เป็น #N/A; Dashboard สรุปด้วย Part No จากบันทึกการผลิต";
-    render(); renderRecords();
+    render();
   } catch (error) {
     $("#error-state").hidden = false; $("#error-message").textContent = error.message;
   } finally {
@@ -134,12 +150,15 @@ async function loadData() {
 document.querySelectorAll(".nav-tab").forEach(button => button.addEventListener("click", () => {
   document.querySelectorAll(".nav-tab").forEach(b=>b.classList.toggle("active", b === button));
   document.querySelectorAll(".page-view").forEach(page=>page.hidden = page.id !== button.dataset.page);
+  if (button.dataset.page === "records-page" && !state.recordsLoaded) loadRecordPage(0);
 }));
 $("#from-date").addEventListener("change", render); $("#to-date").addEventListener("change", render);
 $("#part-filter").addEventListener("input", render);
 $("#clear-filter").addEventListener("click",()=>{$("#from-date").value="";$("#to-date").value="";$("#part-filter").value="";render();});
-$("#record-search").addEventListener("input",renderRecords); $("#records-from").addEventListener("change",renderRecords); $("#records-to").addEventListener("change",renderRecords);
-$("#clear-record-filters").addEventListener("click",()=>{$("#record-search").value="";$("#records-from").value="";$("#records-to").value="";renderRecords();});
+$("#records-form").addEventListener("submit",event=>{event.preventDefault();loadRecordPage(0);});
+$("#clear-record-filters").addEventListener("click",()=>{$("#record-search").value="";$("#records-from").value="";$("#records-to").value="";loadRecordPage(0);});
+$("#records-prev").addEventListener("click",()=>loadRecordPage(Math.max(0,state.recordOffset-100)));
+$("#records-next").addEventListener("click",()=>loadRecordPage(state.recordOffset+100));
 $("#refresh").addEventListener("click",loadData); $("#retry").addEventListener("click",loadData);
 $("#part-table").addEventListener("click",event=>{const button=event.target.closest("[data-part-detail]");if(button)showPart(button.dataset.partDetail);});
 $("#records-table").addEventListener("click",event=>{const button=event.target.closest("[data-record-detail]");if(button)showRecord(Number(button.dataset.recordDetail));});
