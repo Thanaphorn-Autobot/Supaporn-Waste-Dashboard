@@ -66,6 +66,7 @@ export default async function handler(req, res) {
     const partNameKey = find("part name", "partname", "ชื่อชิ้นงาน");
     const producedKey = find("จำนวนผลิต", "produced qty", "produced");
     const ngKey = find("ng", "จำนวน ng"), partIdKey = clean("PartID");
+    const poNoKey = find("po no", "pono"), machineNoKey = find("m/c no", "mc no", "machine no");
     if ([dateKey, partNoKey, producedKey, ngKey].some(key => !key)) throw new Error("Missing required columns: วันที่ผลิต, Part No, จำนวนผลิต, NG");
 
     const records = wasteRows.map(row => {
@@ -89,6 +90,7 @@ export default async function handler(req, res) {
         partName: String(row[partNameKey] ?? part.partName ?? "").trim(),
         partSubNo: String(part.partSubNo ?? "").trim(), partSubName: String(part.partSubName ?? "").trim(),
         produced: numeric(row[producedKey]), ng, defects, materialWasteKg,
+        poNo: String(poNoKey ? row[poNoKey] ?? "" : "").trim(), machineNo: String(machineNoKey ? row[machineNoKey] ?? "" : "").trim(),
         partIdMissing: /^#(N\/A|REF!|VALUE!)/i.test(partId),
       };
     }).filter(record => record.date && (record.partNo || record.produced || record.ng));
