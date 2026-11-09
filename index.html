@@ -78,7 +78,7 @@
 
         <section id="records-page" class="page-view" hidden>
           <section class="page-heading records-heading">
-            <div><p class="eyebrow">WASTE LOG <span>•</span> PRODUCTION RECORDS</p><h1>รายการของเสีย <span>ค้นหาและดูรายละเอียด</span></h1><p class="intro">ค้นหารายการด้วยชิ้นงานหรือสาเหตุ พร้อมกรองตามวันที่</p></div>
+          <div><p class="eyebrow">WASTE LOG <span>•</span> PRODUCTION RECORDS</p><h1>รายการของเสีย <span>ค้นหาและดูรายละเอียด</span></h1><p class="intro">ค้นหารายการด้วยชิ้นงานหรือสาเหตุ พร้อมกรองตามวันที่</p></div>
             <span id="record-count" class="unit-tag">0 รายการ</span>
           </section>
           <form id="records-form" class="filterbar records-filterbar" aria-label="ค้นหาและกรองรายการของเสีย">
@@ -89,7 +89,7 @@
             <button class="clear-filter" id="clear-record-filters" type="button">ล้างตัวกรอง</button>
           </form>
           <section class="panel table-panel records-panel">
-            <div class="records-scroll"><table><thead><tr><th>วันที่ผลิต</th><th>Part No</th><th>ชื่อชิ้นงาน</th><th>Part Sub No</th><th>Part Sub Name</th><th class="number">จำนวนผลิต</th><th class="number">NG</th><th>สาเหตุ</th><th></th></tr></thead><tbody id="records-table"><tr><td colspan="9" class="loading">กำลังโหลด…</td></tr></tbody></table></div>
+            <div class="records-scroll"><table><thead><tr><th>วันที่ผลิต</th><th>Part No</th><th>ชื่อชิ้นงาน</th><th>Part Sub No</th><th>Part Sub Name</th><th class="number">จำนวนผลิต</th><th class="number">NG</th><th class="number">%NG</th><th></th></tr></thead><tbody id="records-table"><tr><td colspan="9" class="loading">กำลังโหลด…</td></tr></tbody></table></div>
             <div class="pagination"><span id="page-summary">กำลังโหลดรายการล่าสุด…</span><div><button class="small-action" id="records-prev" type="button" disabled>ก่อนหน้า</button><button class="small-action" id="records-next" type="button" disabled>ถัดไป</button></div></div>
           </section>
         </section>
@@ -98,7 +98,7 @@
         <div id="error-state" class="error-state" hidden><div class="error-icon">!</div><div><strong>ยังโหลดข้อมูลจากชีตไม่ได้</strong><p id="error-message">ตรวจสอบสิทธิ์การดูข้อมูลของ Google Sheet แล้วลองใหม่อีกครั้ง</p></div><button id="retry" type="button">ลองใหม่</button></div>
       </main>
 
-      <footer><span>Plastic Waste Monitor</span><span>ข้อมูลแสดงผลเป็นภาพรวม ไม่แสดง PO หมายเหตุ หรือเลขเครื่องจักร</span></footer>
+      <footer><span>Plastic Waste Monitor</span><span>ข้อมูลส่วนบุคคลและรายละเอียดการผลิตแสดงเมื่อเปิดการ์ดรายการ</span></footer>
     </div>
     <dialog id="detail-dialog" class="detail-dialog"><form method="dialog"><button class="dialog-close" aria-label="ปิด">×</button></form><div id="detail-content"></div></dialog>
     <script src="/app.js"></script>
