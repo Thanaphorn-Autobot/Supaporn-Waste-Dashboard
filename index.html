@@ -39,6 +39,7 @@
         <section class="filterbar" aria-label="ตัวกรองข้อมูล">
           <label>ตั้งแต่<input type="date" id="from-date" /></label>
           <label>ถึง<input type="date" id="to-date" /></label>
+          <label>วัสดุ<select id="material-filter"><option value="">ทุกวัสดุ</option></select></label>
           <label class="part-filter">ค้นหาชิ้นงาน<input id="part-filter" type="search" list="part-options" placeholder="Part No / Name / Sub No / Sub Name" /><datalist id="part-options"></datalist></label>
           <button class="clear-filter" id="clear-filter" type="button">ล้างตัวกรอง</button>
           <span class="range-label" id="range-label">ข้อมูลทั้งหมด</span>
@@ -64,9 +65,14 @@
           </section>
         </div>
 
+        <section class="panel heatmap-panel">
+          <div class="panel-head"><div><p class="panel-kicker">MACHINE × DEFECT TYPE</p><h2>Heatmap ของเสียแยกตามเครื่องจักร</h2></div><span class="unit-tag">จำนวนชิ้น · สีเข้ม = จำนวนสูง</span></div>
+          <div id="machine-defect-heatmap" class="heatmap-host"><div class="loading">กำลังโหลด…</div></div>
+        </section>
+
         <section class="panel table-panel">
           <div class="panel-head"><div><p class="panel-kicker">PART PERFORMANCE</p><h2>ชิ้นงานที่มีของเสียสูง</h2></div><span class="unit-tag">10 อันดับ</span></div>
-          <div class="table-scroll"><table><thead><tr><th>อันดับ</th><th>Part No</th><th>ชื่อชิ้นงาน</th><th class="number">จำนวนผลิต</th><th class="number">NG</th><th class="number">อัตรา NG</th><th>รายละเอียด</th></tr></thead><tbody id="part-table"><tr><td colspan="7" class="loading">กำลังโหลด…</td></tr></tbody></table></div>
+          <div class="table-scroll"><table class="part-performance-table"><thead><tr><th>อันดับ</th><th>Part No</th><th>ชื่อชิ้นงาน</th><th class="number">จำนวนผลิต</th><th class="number">NG</th><th class="number">อัตรา NG</th><th>รายละเอียด</th></tr></thead><tbody id="part-table"><tr><td colspan="7" class="loading">กำลังโหลด…</td></tr></tbody></table></div>
         </section>
 
         <section class="panel material-panel">
