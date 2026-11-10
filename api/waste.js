@@ -81,7 +81,7 @@ export default async function handler(req, res) {
       const ng = numeric(row[ngKey]), mix = mixByPart.get(partId);
       const totalRatio = mix ? [...mix.values()].reduce((sum, ratio) => sum + ratio, 0) : 0;
       const materialWasteKg = {};
-      if (mix && totalRatio > 0 && ng > 0) {
+      if (mix && totalRatio > 0) {
         const grams = numeric(part.partWeight);
         for (const [id, ratio] of mix) materialWasteKg[materialNames.get(id) || id] = ng * grams * ratio / totalRatio / 1000;
       }
@@ -112,3 +112,4 @@ export default async function handler(req, res) {
     return res.status(502).json({ error: "Unable to read the Google Sheet. Check that its data tabs are viewable by the Vercel function.", detail: error.message });
   }
 }
+
