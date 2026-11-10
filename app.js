@@ -18,7 +18,8 @@ function partText(r) {
 function getFiltered() {
   const from = $("#from-date").value, to = $("#to-date").value;
   const query = $("#part-filter").value.trim().toLocaleLowerCase("th");
-  return state.records.filter(r => (!from || r.date >= from) && (!to || r.date <= to) && (!query || partText(r).includes(query)));
+  const material = $("#material-filter").value;
+  return state.records.filter(r => (!from || r.date >= from) && (!to || r.date <= to) && (!query || partText(r).includes(query)) && (!material || Object.prototype.hasOwnProperty.call(r.materialWasteKg || {}, material)));
 }
 function render() {
   const rows = getFiltered();
@@ -31,7 +32,7 @@ function render() {
   $("#range-label").textContent = rows.length ? nf.format(rows.length) + " รายการ" : "ไม่มีข้อมูลในช่วงนี้";
   const dates = rows.map(r => r.date).sort();
   $("#trend-range").textContent = dates.length ? shortDate(dates[0]) + " — " + shortDate(dates.at(-1)) : "";
-  renderTrend(rows); renderDefects(rows); renderParts(rows); renderMaterials(rows);
+  renderTrend(rows); renderDefects(rows); renderHeatmap(rows); renderParts(rows); renderMaterials(rows, $("#material-filter").value);
 }
 function renderTrend(rows) {
   const host = $("#trend-chart"), byMonth = new Map();
@@ -63,6 +64,38 @@ function renderDefects(rows) {
   const top = Object.entries(total).sort((a,b) => b[1]-a[1]).slice(0, 7), max = top[0]?.[1] || 1;
   $("#defect-chart").innerHTML = top.length ? top.map(([name,count]) => '<div class="bar-row"><span class="bar-name" title="' + escapeHTML(name) + '">' + escapeHTML(name) + '</span><span class="bar-track"><span class="bar-fill" style="width:' + Math.max(2,count/max*100) + '%"></span></span><span class="bar-value">' + nf.format(count) + '</span></div>').join("") : '<div class="loading">ไม่มีข้อมูลประเภทของเสีย</div>';
 }
+function renderHeatmap(rows) {
+  const machineTotals = new Map(), defectTotals = new Map(), counts = new Map();
+  for (const r of rows) {
+    const machine = String(r.machineNo || "").trim() || "ไม่ระบุ";
+    if (!machineTotals.has(machine)) machineTotals.set(machine, 0);
+    for (const [defect, rawCount] of Object.entries(r.defects || {})) {
+      const count = Number(rawCount) || 0;
+      if (count <= 0) continue;
+      const key = machine + "\u0000" + defect;
+      counts.set(key, (counts.get(key) || 0) + count);
+      machineTotals.set(machine, machineTotals.get(machine) + count);
+      defectTotals.set(defect, (defectTotals.get(defect) || 0) + count);
+    }
+  }
+  const machines = [...machineTotals.keys()].sort((a,b) => a === "ไม่ระบุ" ? 1 : b === "ไม่ระบุ" ? -1 : a.localeCompare(b,"th",{numeric:true}));
+  const defects = [...defectTotals.keys()].sort((a,b) => defectTotals.get(b)-defectTotals.get(a));
+  const max = Math.max(1, ...counts.values());
+  const host = $("#machine-defect-heatmap");
+  if (!machines.length || !defects.length) {
+    host.innerHTML = '<div class="loading">ไม่มีข้อมูล M/C No หรือประเภทของเสียในช่วงที่เลือก</div>';
+    return;
+  }
+  const head = '<thead><tr><th class="heatmap-machine">M/C No</th>' + defects.map(name=>'<th title="' + escapeHTML(name) + '">' + escapeHTML(name) + '</th>').join("") + '</tr></thead>';
+  const body = machines.map(machine => '<tr><th class="heatmap-machine" scope="row">' + escapeHTML(machine) + '</th>' + defects.map(defect=>{
+    const value = counts.get(machine + "\u0000" + defect) || 0;
+    const intensity = value ? Math.sqrt(value / max) : 0;
+    const background = value ? 'rgba(43,148,119,' + (0.12 + intensity * 0.76).toFixed(2) + ')' : '#f6f8f6';
+    const color = intensity > 0.68 ? '#fff' : '#52665c';
+    return '<td title="' + escapeHTML(machine + " · " + defect + ": " + nf.format(value) + " ชิ้น") + '" style="background:' + background + ';color:' + color + '">' + (value ? nf.format(value) : '—') + '</td>';
+  }).join("") + '</tr>').join("");
+  host.innerHTML = '<div class="heatmap-scroll"><table class="heatmap-table">' + head + '<tbody>' + body + '</tbody></table></div>';
+}
 function renderParts(rows) {
   const parts = new Map();
   for (const r of rows) {
@@ -72,9 +105,9 @@ function renderParts(rows) {
   const top = [...parts.values()].sort((a,b) => b.ng-a.ng).slice(0, 10);
   $("#part-table").innerHTML = top.length ? top.map((p,i) => '<tr><td class="rank">' + String(i+1).padStart(2,"0") + '</td><td class="part-code">' + escapeHTML(p.partNo || "—") + '</td><td class="part-name" title="' + escapeHTML(p.partName) + '">' + escapeHTML(p.partName || "—") + (p.partSubNo ? '<small class="subline">' + escapeHTML(p.partSubNo) + (p.partSubName ? " · " + escapeHTML(p.partSubName) : "") + '</small>' : "") + '</td><td class="number">' + nf.format(p.produced) + '</td><td class="number">' + nf.format(p.ng) + '</td><td class="number rate-cell">' + (p.produced ? pf.format(p.ng/p.produced*100) : "0.00") + '%</td><td><button class="small-action" data-part-detail="' + escapeHTML(p.key) + '">ดูกราฟ</button></td></tr>').join("") : '<tr><td colspan="7" class="loading">ไม่มีข้อมูลในช่วงที่เลือก</td></tr>';
 }
-function renderMaterials(rows) {
+function renderMaterials(rows, selectedMaterial) {
   const total = {};
-  for (const r of rows) for (const [name, kg] of Object.entries(r.materialWasteKg || {})) total[name] = (total[name] || 0) + kg;
+  for (const r of rows) for (const [name, kg] of Object.entries(r.materialWasteKg || {})) if (!selectedMaterial || name === selectedMaterial) total[name] = (total[name] || 0) + kg;
   const items = Object.entries(total).filter(([,kg]) => kg > 0).sort((a,b) => b[1]-a[1]), max = items[0]?.[1] || 1;
   $("#material-chart").innerHTML = items.length ? items.map(([name,kg]) => '<div class="bar-row"><span class="bar-name" title="' + escapeHTML(name) + '">' + escapeHTML(name) + '</span><span class="bar-track"><span class="bar-fill material-fill" style="width:' + Math.max(2,kg/max*100) + '%"></span></span><span class="bar-value">' + kgf.format(kg) + '</span></div>').join("") : '<div class="loading">ไม่มีข้อมูลวัสดุที่คำนวณได้</div>';
 }
@@ -137,6 +170,8 @@ async function loadData() {
       if (key && !parts.has(key)) parts.set(key, [r.partNo,r.partName,r.partSubNo,r.partSubName].filter(Boolean).join(" — "));
     }
     $("#part-options").innerHTML = [...parts.entries()].map(([no,label])=>'<option value="' + escapeHTML(no) + '">' + escapeHTML(label) + '</option>').join("");
+    const materials = [...new Set(state.records.flatMap(r => Object.keys(r.materialWasteKg || {})))].sort((a,b)=>a.localeCompare(b,"th"));
+    $("#material-filter").innerHTML = '<option value="">ทุกวัสดุ</option>' + materials.map(name=>'<option value="' + escapeHTML(name) + '">' + escapeHTML(name) + '</option>').join("");
     $("#updated-at").textContent = "อัปเดต " + new Intl.DateTimeFormat("th-TH",{hour:"2-digit",minute:"2-digit"}).format(new Date(payload.refreshedAt || Date.now()));
     $("#data-warning").hidden = !state.unresolved;
     if (state.unresolved) $("#data-warning").textContent = "พบ " + nf.format(state.unresolved) + " รายการที่ PartID เป็น #N/A; Dashboard สรุปด้วย Part No จากบันทึกการผลิต";
@@ -154,8 +189,9 @@ document.querySelectorAll(".nav-tab").forEach(button => button.addEventListener(
   if (button.dataset.page === "records-page" && !state.recordsLoaded) loadRecordPage(0);
 }));
 $("#from-date").addEventListener("change", render); $("#to-date").addEventListener("change", render);
+$("#material-filter").addEventListener("change", render);
 $("#part-filter").addEventListener("input", render);
-$("#clear-filter").addEventListener("click",()=>{$("#from-date").value="";$("#to-date").value="";$("#part-filter").value="";render();});
+$("#clear-filter").addEventListener("click",()=>{$("#from-date").value="";$("#to-date").value="";$("#part-filter").value="";$("#material-filter").value="";render();});
 $("#records-form").addEventListener("submit",event=>{event.preventDefault();loadRecordPage(0);});
 $("#clear-record-filters").addEventListener("click",()=>{$("#record-search").value="";$("#records-from").value="";$("#records-to").value="";loadRecordPage(0);});
 $("#records-prev").addEventListener("click",()=>loadRecordPage(Math.max(0,state.recordOffset-100)));
