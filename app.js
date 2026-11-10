@@ -31,7 +31,7 @@ function render() {
   $("#range-label").textContent = rows.length ? nf.format(rows.length) + " รายการ" : "ไม่มีข้อมูลในช่วงนี้";
   const dates = rows.map(r => r.date).sort();
   $("#trend-range").textContent = dates.length ? shortDate(dates[0]) + " — " + shortDate(dates.at(-1)) : "";
-  renderTrend(rows); renderDefects(rows); renderParts(rows, ng); renderMaterials(rows);
+  renderTrend(rows); renderDefects(rows); renderParts(rows); renderMaterials(rows);
 }
 function renderTrend(rows) {
   const host = $("#trend-chart"), byMonth = new Map();
@@ -63,14 +63,14 @@ function renderDefects(rows) {
   const top = Object.entries(total).sort((a,b) => b[1]-a[1]).slice(0, 7), max = top[0]?.[1] || 1;
   $("#defect-chart").innerHTML = top.length ? top.map(([name,count]) => '<div class="bar-row"><span class="bar-name" title="' + escapeHTML(name) + '">' + escapeHTML(name) + '</span><span class="bar-track"><span class="bar-fill" style="width:' + Math.max(2,count/max*100) + '%"></span></span><span class="bar-value">' + nf.format(count) + '</span></div>').join("") : '<div class="loading">ไม่มีข้อมูลประเภทของเสีย</div>';
 }
-function renderParts(rows, totalNg) {
+function renderParts(rows) {
   const parts = new Map();
   for (const r of rows) {
     const key = r.partNo || r.partId || "ไม่ระบุ Part No", p = parts.get(key) || { key, partNo: r.partNo, partName: r.partName, partSubNo: r.partSubNo, partSubName: r.partSubName, produced: 0, ng: 0 };
     p.produced += r.produced; p.ng += r.ng; parts.set(key, p);
   }
-  const top = [...parts.values()].sort((a,b) => b.ng-a.ng).slice(0, 10), max = top[0]?.ng || 1;
-  $("#part-table").innerHTML = top.length ? top.map((p,i) => '<tr><td class="rank">' + String(i+1).padStart(2,"0") + '</td><td class="part-code">' + escapeHTML(p.partNo || "—") + '</td><td class="part-name" title="' + escapeHTML(p.partName) + '">' + escapeHTML(p.partName || "—") + (p.partSubNo ? '<small class="subline">' + escapeHTML(p.partSubNo) + (p.partSubName ? " · " + escapeHTML(p.partSubName) : "") + '</small>' : "") + '</td><td class="number">' + nf.format(p.produced) + '</td><td class="number">' + nf.format(p.ng) + '</td><td class="number rate-cell">' + (p.produced ? pf.format(p.ng/p.produced*100) : "0.00") + '%</td><td><span class="share-track"><span class="share-fill" style="display:block;width:' + (p.ng/max*100) + '%"></span></span><span class="share-label">' + (totalNg ? pf.format(p.ng/totalNg*100) : "0.00") + '%</span></td><td><button class="small-action" data-part-detail="' + escapeHTML(p.key) + '">ดูกราฟ</button></td></tr>').join("") : '<tr><td colspan="8" class="loading">ไม่มีข้อมูลในช่วงที่เลือก</td></tr>';
+  const top = [...parts.values()].sort((a,b) => b.ng-a.ng).slice(0, 10);
+  $("#part-table").innerHTML = top.length ? top.map((p,i) => '<tr><td class="rank">' + String(i+1).padStart(2,"0") + '</td><td class="part-code">' + escapeHTML(p.partNo || "—") + '</td><td class="part-name" title="' + escapeHTML(p.partName) + '">' + escapeHTML(p.partName || "—") + (p.partSubNo ? '<small class="subline">' + escapeHTML(p.partSubNo) + (p.partSubName ? " · " + escapeHTML(p.partSubName) : "") + '</small>' : "") + '</td><td class="number">' + nf.format(p.produced) + '</td><td class="number">' + nf.format(p.ng) + '</td><td class="number rate-cell">' + (p.produced ? pf.format(p.ng/p.produced*100) : "0.00") + '%</td><td><button class="small-action" data-part-detail="' + escapeHTML(p.key) + '">ดูกราฟ</button></td></tr>').join("") : '<tr><td colspan="7" class="loading">ไม่มีข้อมูลในช่วงที่เลือก</td></tr>';
 }
 function renderMaterials(rows) {
   const total = {};
@@ -165,3 +165,4 @@ $("#part-table").addEventListener("click",event=>{const button=event.target.clos
 $("#records-table").addEventListener("click",event=>{const button=event.target.closest("[data-record-detail]");if(button)showRecord(Number(button.dataset.recordDetail));});
 $("#detail-dialog").addEventListener("click",event=>{if(event.target === $("#detail-dialog")) $("#detail-dialog").close();});
 loadData();
+
