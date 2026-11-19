@@ -8,4 +8,5 @@
 
 .detail-bars{padding:0 24px 0 0;scrollbar-gutter:stable}.detail-bars .bar-row{grid-template-columns:minmax(110px,170px) minmax(80px,1fr) 112px;gap:14px}.detail-bars .bar-value{min-width:112px;white-space:nowrap}
 @media(max-width:700px){.detail-bars{padding-right:18px}.detail-bars .bar-row{grid-template-columns:minmax(76px,100px) minmax(36px,1fr) 100px;gap:8px}.detail-bars .bar-value{min-width:100px;font-size:9px}}
+.part-search-row{display:flex;align-items:center;gap:8px;min-width:0}.part-search-row input{flex:1;min-width:0!important;width:100%}.part-search-row .search-submit{flex:0 0 auto}
 
