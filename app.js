@@ -2,7 +2,7 @@ const $ = selector => document.querySelector(selector);
 const nf = new Intl.NumberFormat("th-TH", { maximumFractionDigits: 0 });
 const pf = new Intl.NumberFormat("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const kgf = new Intl.NumberFormat("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const state = { records: [], unresolved: 0, partQuery: "", recordRows: [], recordTotal: 0, recordOffset: 0, recordsLoaded: false, recordsBusy: false };
+const state = { records: [], unresolved: 0, appliedFrom: "", appliedTo: "", partQuery: "", materialFilter: "", recordRows: [], recordTotal: 0, recordOffset: 0, recordsLoaded: false, recordsBusy: false };
 const monthNames = new Intl.DateTimeFormat("th-TH", { month: "short", year: "2-digit" });
 
 function escapeHTML(value) {
@@ -15,11 +15,18 @@ function shortDate(value) {
 function partText(r) {
   return [r.partNo, r.partName, r.partSubNo, r.partSubName].join(" ").toLocaleLowerCase("th");
 }
+function getBaseFiltered() {
+  return state.records.filter(r => (!state.appliedFrom || r.date >= state.appliedFrom) && (!state.appliedTo || r.date <= state.appliedTo) && (!state.partQuery || partText(r).includes(state.partQuery)));
+}
 function getFiltered() {
-  const from = $("#from-date").value, to = $("#to-date").value;
-  const query = state.partQuery;
-  const material = $("#material-filter").value;
-  return state.records.filter(r => (!from || r.date >= from) && (!to || r.date <= to) && (!query || partText(r).includes(query)) && (!material || Object.prototype.hasOwnProperty.call(r.materialWasteKg || {}, material)));
+  const rows = getBaseFiltered();
+  return rows.filter(r => (!state.materialFilter || Object.prototype.hasOwnProperty.call(r.materialWasteKg || {}, state.materialFilter)));
+}
+function updateMaterialOptions(rows) {
+  const materials = [...new Set(rows.flatMap(r => Object.keys(r.materialWasteKg || {})))].sort((a,b)=>a.localeCompare(b,"th"));
+  if (state.materialFilter && !materials.includes(state.materialFilter)) state.materialFilter = "";
+  $("#material-filter").innerHTML = '<option value="">ทุกวัสดุ</option>' + materials.map(name=>'<option value="' + escapeHTML(name) + '">' + escapeHTML(name) + '</option>').join("");
+  $("#material-filter").value = state.materialFilter;
 }
 function render() {
   const rows = getFiltered();
@@ -32,7 +39,7 @@ function render() {
   $("#range-label").textContent = rows.length ? nf.format(rows.length) + " รายการ" : "ไม่มีข้อมูลในช่วงนี้";
   const dates = rows.map(r => r.date).sort();
   $("#trend-range").textContent = dates.length ? shortDate(dates[0]) + " — " + shortDate(dates.at(-1)) : "";
-  renderTrend(rows); renderDefects(rows); renderHeatmap(rows); renderParts(rows); renderMaterials(rows, $("#material-filter").value);
+  renderTrend(rows); renderDefects(rows); renderHeatmap(rows); renderParts(rows); renderMaterials(rows, state.materialFilter);
 }
 function renderTrend(rows) {
   const host = $("#trend-chart"), byMonth = new Map();
@@ -170,8 +177,7 @@ async function loadData() {
       if (key && !parts.has(key)) parts.set(key, [r.partNo,r.partName,r.partSubNo,r.partSubName].filter(Boolean).join(" — "));
     }
     $("#part-options").innerHTML = [...parts.entries()].map(([no,label])=>'<option value="' + escapeHTML(no) + '">' + escapeHTML(label) + '</option>').join("");
-    const materials = [...new Set(state.records.flatMap(r => Object.keys(r.materialWasteKg || {})))].sort((a,b)=>a.localeCompare(b,"th"));
-    $("#material-filter").innerHTML = '<option value="">ทุกวัสดุ</option>' + materials.map(name=>'<option value="' + escapeHTML(name) + '">' + escapeHTML(name) + '</option>').join("");
+    updateMaterialOptions(getBaseFiltered());
     $("#updated-at").textContent = "อัปเดต " + new Intl.DateTimeFormat("th-TH",{hour:"2-digit",minute:"2-digit"}).format(new Date(payload.refreshedAt || Date.now()));
     $("#data-warning").hidden = !state.unresolved;
     if (state.unresolved) $("#data-warning").textContent = "พบ " + nf.format(state.unresolved) + " รายการที่ PartID เป็น #N/A; Dashboard สรุปด้วย Part No จากบันทึกการผลิต";
@@ -188,12 +194,21 @@ document.querySelectorAll(".nav-tab").forEach(button => button.addEventListener(
   document.querySelectorAll(".page-view").forEach(page=>page.hidden = page.id !== button.dataset.page);
   if (button.dataset.page === "records-page" && !state.recordsLoaded) loadRecordPage(0);
 }));
-$("#from-date").addEventListener("change", render); $("#to-date").addEventListener("change", render);
-$("#material-filter").addEventListener("change", render);
-function applyPartFilter() { state.partQuery = $("#part-filter").value.trim().toLocaleLowerCase("th"); render(); }
-$("#part-search-button").addEventListener("click", applyPartFilter);
-$("#part-filter").addEventListener("keydown",event=>{if(event.key === "Enter"){event.preventDefault();applyPartFilter();}});
-$("#clear-filter").addEventListener("click",()=>{$("#from-date").value="";$("#to-date").value="";$("#part-filter").value="";state.partQuery="";$("#material-filter").value="";render();});
+function applyDashboardFilters() {
+  state.appliedFrom = $("#from-date").value;
+  state.appliedTo = $("#to-date").value;
+  state.partQuery = $("#part-filter").value.trim().toLocaleLowerCase("th");
+  state.materialFilter = $("#material-filter").value;
+  updateMaterialOptions(getBaseFiltered());
+  render();
+}
+$("#part-search-button").addEventListener("click", applyDashboardFilters);
+$("#part-filter").addEventListener("keydown",event=>{if(event.key === "Enter"){event.preventDefault();applyDashboardFilters();}});
+$("#clear-filter").addEventListener("click",()=>{
+  $("#from-date").value=""; $("#to-date").value=""; $("#part-filter").value="";
+  state.appliedFrom=""; state.appliedTo=""; state.partQuery=""; state.materialFilter="";
+  updateMaterialOptions(getBaseFiltered()); render();
+});
 $("#records-form").addEventListener("submit",event=>{event.preventDefault();loadRecordPage(0);});
 $("#clear-record-filters").addEventListener("click",()=>{$("#record-search").value="";$("#records-from").value="";$("#records-to").value="";loadRecordPage(0);});
 $("#records-prev").addEventListener("click",()=>loadRecordPage(Math.max(0,state.recordOffset-100)));
