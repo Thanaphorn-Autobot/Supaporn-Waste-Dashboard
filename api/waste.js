@@ -1,6 +1,7 @@
 const SHEET_ID = "1Oh4I2T-GyDrMHYwCiCrVGlJLUH1kwqwo8Jgs1Z9tDDM";
 const excluded = new Set(["วันที่ผลิต", "date", "production date", "partid", "part no", "partname", "part name", "po no", "จำนวนสั่งผลิต", "จำนวนผลิต", "ค้างผลิต", "ng", "% ng", "remark", "m/c no"]);
 const clean = value => String(value ?? "").trim().toLocaleLowerCase("th").replace(/\s+/g, " ");
+const ratioNumber = new Intl.NumberFormat("en-US", { maximumFractionDigits: 6 });
 
 function dateValue(value) {
   if (typeof value === "string") {
@@ -45,14 +46,18 @@ export default async function handler(req, res) {
         partName: String(pick(row, "Part Name")).trim(),
         partSubNo: String(pick(row, "Part Sub No")).trim(),
         partSubName: String(pick(row, "Part Sub Name")).trim(),
-        partWeight: numeric(pick(row, "Part (g)")),
+        partWeight: pick(row, "Part (g)") === "" ? null : numeric(pick(row, "Part (g)")),
+        runnerWeight: pick(row, "Runner (g)") === "" ? null : numeric(pick(row, "Runner (g)")),
+        lossPercent: pick(row, "Loss (%)") === "" ? null : numeric(pick(row, "Loss (%)")),
       });
     }
-    const materialNames = new Map(), mixByPart = new Map();
+    const materialNames = new Map(), materialMeta = new Map(), mixByPart = new Map();
     for (const row of mappingRows) {
       const materialId = String(pick(row, "MaterialID")).trim();
+      const materialNo = String(pick(row, "Mat'l No", "Material No")).trim();
       const materialName = String(pick(row, "Mat'l Name", "Material Name", "Mat'l No")).trim();
       if (materialId && materialName) materialNames.set(materialId, materialName);
+      if (materialId) materialMeta.set(materialId, { materialNo, materialName });
       const partId = String(pick(row, "PartID")).trim(), ratio = numeric(pick(row, "Ratio"));
       if (!partId || !materialId || ratio <= 0) continue;
       const mix = mixByPart.get(partId) || new Map();
@@ -81,6 +86,11 @@ export default async function handler(req, res) {
       const ng = numeric(row[ngKey]), mix = mixByPart.get(partId);
       const totalRatio = mix ? [...mix.values()].reduce((sum, ratio) => sum + ratio, 0) : 0;
       const materialWasteKg = {};
+      const materials = mix ? [...mix.entries()].map(([id, ratio]) => ({
+        materialNo: materialMeta.get(id)?.materialNo || id,
+        materialName: materialMeta.get(id)?.materialName || materialNames.get(id) || id,
+        ratio: Number(ratioNumber.format(ratio)),
+      })) : [];
       if (mix && totalRatio > 0) {
         const grams = numeric(part.partWeight);
         for (const [id, ratio] of mix) materialWasteKg[materialNames.get(id) || id] = ng * grams * ratio / totalRatio / 1000;
@@ -89,6 +99,7 @@ export default async function handler(req, res) {
         date: dateValue(row[dateKey]), partId, partNo: String(row[partNoKey] ?? "").trim(),
         partName: String(row[partNameKey] ?? part.partName ?? "").trim(),
         partSubNo: String(part.partSubNo ?? "").trim(), partSubName: String(part.partSubName ?? "").trim(),
+        partWeight: part.partWeight ?? null, runnerWeight: part.runnerWeight ?? null, lossPercent: part.lossPercent ?? null, materials,
         produced: numeric(row[producedKey]), ng, defects, materialWasteKg,
         poNo: String(poNoKey ? row[poNoKey] ?? "" : "").trim(), machineNo: String(machineNoKey ? row[machineNoKey] ?? "" : "").trim(),
         partIdMissing: /^#(N\/A|REF!|VALUE!)/i.test(partId),
