@@ -1,8 +1,9 @@
 const $ = selector => document.querySelector(selector);
 const nf = new Intl.NumberFormat("th-TH", { maximumFractionDigits: 0 });
 const pf = new Intl.NumberFormat("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const wf = new Intl.NumberFormat("th-TH", { maximumFractionDigits: 2 });
 const kgf = new Intl.NumberFormat("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const state = { records: [], unresolved: 0, appliedFrom: "", appliedTo: "", partQuery: "", materialFilter: "", recordRows: [], recordTotal: 0, recordOffset: 0, recordsLoaded: false, recordsBusy: false };
+const state = { records: [], unresolved: 0, appliedFrom: "", appliedTo: "", partQuery: "", materialFilter: "", openPartDetail: null, recordRows: [], recordTotal: 0, recordOffset: 0, recordsLoaded: false, recordsBusy: false };
 const monthNames = new Intl.DateTimeFormat("th-TH", { month: "short", year: "2-digit" });
 
 function escapeHTML(value) {
@@ -106,7 +107,9 @@ function renderHeatmap(rows) {
 function renderParts(rows) {
   const parts = new Map();
   for (const r of rows) {
-    const key = r.partNo || r.partId || "ไม่ระบุ Part No", p = parts.get(key) || { key, partNo: r.partNo, partName: r.partName, partSubNo: r.partSubNo, partSubName: r.partSubName, produced: 0, ng: 0 };
+    const partNo = r.partNo || r.partId || "ไม่ระบุ Part No", partSubNo = r.partSubNo || "ไม่ระบุ Part Sub No";
+    const key = encodeURIComponent(JSON.stringify([partNo,partSubNo]));
+    const p = parts.get(key) || { key, partNo: r.partNo, partName: r.partName, partSubNo: r.partSubNo, partSubName: r.partSubName, produced: 0, ng: 0 };
     p.produced += r.produced; p.ng += r.ng; parts.set(key, p);
   }
   const top = [...parts.values()].sort((a,b) => b.ng-a.ng).slice(0, 10);
@@ -154,12 +157,29 @@ function showRecord(index) {
   showDialog('<p class="panel-kicker">WASTE RECORD</p><h2>การ์ดรายการของเสีย</h2><p class="detail-date">' + shortDate(r.date) + '</p><div class="detail-metrics"><div><small>Part No</small><strong>' + escapeHTML(r.partNo || "—") + '</strong></div><div><small>Part Name</small><strong>' + escapeHTML(r.partName || "—") + '</strong></div><div><small>Part Sub No</small><strong>' + escapeHTML(r.partSubNo || "—") + '</strong></div><div><small>Part Sub Name</small><strong>' + escapeHTML(r.partSubName || "—") + '</strong></div><div><small>PO No</small><strong>' + escapeHTML(r.poNo || "—") + '</strong></div><div><small>M/C No</small><strong>' + escapeHTML(r.machineNo || "—") + '</strong></div><div><small>จำนวนผลิต</small><strong>' + nf.format(r.produced) + '</strong></div><div><small>NG</small><strong>' + nf.format(r.ng) + '</strong></div><div><small>%NG</small><strong>' + defectPercent(r.ng,r.produced) + '</strong></div></div><h3>สาเหตุของเสีย</h3>' + renderMiniBars(r.defects,r.produced));
 }
 function showPart(key) {
-  const rows = getFiltered().filter(r => (r.partNo || r.partId || "ไม่ระบุ Part No") === key), p = rows[0];
+  let identity;
+  try { identity = JSON.parse(decodeURIComponent(key)); } catch { return; }
+  const [partNo,partSubNo] = identity;
+  const rows = getFiltered().filter(r => (r.partNo || r.partId || "ไม่ระบุ Part No") === partNo && (r.partSubNo || "ไม่ระบุ Part Sub No") === partSubNo), p = rows[0];
   if (!p) return;
+  state.openPartDetail = { p, rows };
+  showDialog(renderPartDialog("graph"));
+}
+function renderPartDialog(view) {
+  const { p, rows } = state.openPartDetail;
   const ng = rows.reduce((sum,r)=>sum+r.ng,0), produced = rows.reduce((sum,r)=>sum+r.produced,0), defects = {};
   for (const r of rows) for (const [name,count] of Object.entries(r.defects || {})) defects[name] = (defects[name] || 0) + count;
   const title = (p.partNo || "—") + " · " + (p.partName || "ไม่ระบุชื่อ");
-  showDialog('<p class="panel-kicker">PART WASTE DETAIL</p><h2>' + escapeHTML(title) + '</h2><p class="detail-date">' + escapeHTML(p.partSubNo || "") + (p.partSubName ? " · " + escapeHTML(p.partSubName) : "") + '</p><div class="detail-metrics"><div><small>รายการผลิต</small><strong>' + nf.format(rows.length) + '</strong></div><div><small>จำนวนผลิต</small><strong>' + nf.format(produced) + '</strong></div><div><small>NG รวม</small><strong>' + nf.format(ng) + '</strong></div><div><small>อัตรา NG</small><strong>' + (produced ? pf.format(ng/produced*100) : "0.00") + '%</strong></div></div><h3>กราฟสาเหตุของเสีย</h3>' + renderMiniBars(defects,produced));
+  const subtitle = escapeHTML(p.partSubNo || "ไม่ระบุ Part Sub No") + (p.partSubName ? " · " + escapeHTML(p.partSubName) : "");
+  const actions = view === "graph" ? '<div class="detail-view-actions"><button class="small-action" data-part-view="details" type="button">ดูข้อมูลชิ้นงาน</button></div>' : '<div class="detail-view-actions"><button class="small-action" data-part-view="graph" type="button">← กลับไปกราฟ</button></div>';
+  if (view === "details") {
+    const value = (n,suffix,format) => n === null || n === undefined || n === "" ? "—" : format.format(Number(n)) + suffix;
+    const ratioFormat = new Intl.NumberFormat("th-TH", { maximumFractionDigits: 4 });
+    const materials = p.materials || [];
+    const materialTable = materials.length ? '<div class="table-scroll detail-material-scroll"><table class="detail-material-table"><thead><tr><th>Mat\'l No</th><th>Mat\'l Name</th><th class="number">Ratio</th></tr></thead><tbody>' + materials.map(m=>'<tr><td class="part-code">' + escapeHTML(m.materialNo || "—") + '</td><td>' + escapeHTML(m.materialName || "—") + '</td><td class="number">' + ratioFormat.format(m.ratio) + '</td></tr>').join("") + '</tbody></table></div>' : '<p class="empty-note">ไม่มีข้อมูลส่วนผสมวัสดุสำหรับ Part Sub นี้</p>';
+    return '<p class="panel-kicker">PART WASTE DETAIL</p><h2>' + escapeHTML(title) + '</h2><p class="detail-date">' + subtitle + '</p>' + actions + '<h3>ข้อมูลชิ้นงาน</h3><div class="detail-metrics"><div><small>น้ำหนักชิ้นงาน</small><strong>' + value(p.partWeight," g",wf) + '</strong></div><div><small>น้ำหนัก Runner</small><strong>' + value(p.runnerWeight," g",wf) + '</strong></div><div><small>Loss</small><strong>' + value(p.lossPercent,"%",pf) + '</strong></div></div><h3>ส่วนผสมวัสดุ</h3>' + materialTable;
+  }
+  return '<p class="panel-kicker">PART WASTE DETAIL</p><h2>' + escapeHTML(title) + '</h2><p class="detail-date">' + subtitle + '</p><div class="detail-metrics"><div><small>รายการผลิต</small><strong>' + nf.format(rows.length) + '</strong></div><div><small>จำนวนผลิต</small><strong>' + nf.format(produced) + '</strong></div><div><small>NG รวม</small><strong>' + nf.format(ng) + '</strong></div><div><small>อัตรา NG</small><strong>' + (produced ? pf.format(ng/produced*100) : "0.00") + '%</strong></div></div>' + actions + '<h3>กราฟสาเหตุของเสีย</h3>' + renderMiniBars(defects,produced);
 }
 async function loadData() {
   $("#error-state").hidden = true; $("#refresh").disabled = true; $("#refresh").textContent = "กำลังโหลด…";
@@ -217,5 +237,11 @@ $("#refresh").addEventListener("click",loadData); $("#retry").addEventListener("
 $("#part-table").addEventListener("click",event=>{const button=event.target.closest("[data-part-detail]");if(button)showPart(button.dataset.partDetail);});
 $("#records-table").addEventListener("click",event=>{const button=event.target.closest("[data-record-detail]");if(button)showRecord(Number(button.dataset.recordDetail));});
 $("#detail-dialog").addEventListener("click",event=>{if(event.target === $("#detail-dialog")) $("#detail-dialog").close();});
+$("#detail-content").addEventListener("click",event=>{
+  const button = event.target.closest("[data-part-view]");
+  if (!button || !state.openPartDetail) return;
+  $("#detail-content").innerHTML = renderPartDialog(button.dataset.partView);
+  $("#detail-dialog").scrollTop = 0;
+});
 loadData();
 
