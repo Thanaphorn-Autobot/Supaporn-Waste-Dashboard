@@ -2,7 +2,7 @@ const $ = selector => document.querySelector(selector);
 const nf = new Intl.NumberFormat("th-TH", { maximumFractionDigits: 0 });
 const pf = new Intl.NumberFormat("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const kgf = new Intl.NumberFormat("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const state = { records: [], unresolved: 0, recordRows: [], recordTotal: 0, recordOffset: 0, recordsLoaded: false, recordsBusy: false };
+const state = { records: [], unresolved: 0, partQuery: "", recordRows: [], recordTotal: 0, recordOffset: 0, recordsLoaded: false, recordsBusy: false };
 const monthNames = new Intl.DateTimeFormat("th-TH", { month: "short", year: "2-digit" });
 
 function escapeHTML(value) {
@@ -17,7 +17,7 @@ function partText(r) {
 }
 function getFiltered() {
   const from = $("#from-date").value, to = $("#to-date").value;
-  const query = $("#part-filter").value.trim().toLocaleLowerCase("th");
+  const query = state.partQuery;
   const material = $("#material-filter").value;
   return state.records.filter(r => (!from || r.date >= from) && (!to || r.date <= to) && (!query || partText(r).includes(query)) && (!material || Object.prototype.hasOwnProperty.call(r.materialWasteKg || {}, material)));
 }
@@ -147,7 +147,7 @@ function showRecord(index) {
   showDialog('<p class="panel-kicker">WASTE RECORD</p><h2>การ์ดรายการของเสีย</h2><p class="detail-date">' + shortDate(r.date) + '</p><div class="detail-metrics"><div><small>Part No</small><strong>' + escapeHTML(r.partNo || "—") + '</strong></div><div><small>Part Name</small><strong>' + escapeHTML(r.partName || "—") + '</strong></div><div><small>Part Sub No</small><strong>' + escapeHTML(r.partSubNo || "—") + '</strong></div><div><small>Part Sub Name</small><strong>' + escapeHTML(r.partSubName || "—") + '</strong></div><div><small>PO No</small><strong>' + escapeHTML(r.poNo || "—") + '</strong></div><div><small>M/C No</small><strong>' + escapeHTML(r.machineNo || "—") + '</strong></div><div><small>จำนวนผลิต</small><strong>' + nf.format(r.produced) + '</strong></div><div><small>NG</small><strong>' + nf.format(r.ng) + '</strong></div><div><small>%NG</small><strong>' + defectPercent(r.ng,r.produced) + '</strong></div></div><h3>สาเหตุของเสีย</h3>' + renderMiniBars(r.defects,r.produced));
 }
 function showPart(key) {
-  const rows = state.records.filter(r => (r.partNo || r.partId || "ไม่ระบุ Part No") === key), p = rows[0];
+  const rows = getFiltered().filter(r => (r.partNo || r.partId || "ไม่ระบุ Part No") === key), p = rows[0];
   if (!p) return;
   const ng = rows.reduce((sum,r)=>sum+r.ng,0), produced = rows.reduce((sum,r)=>sum+r.produced,0), defects = {};
   for (const r of rows) for (const [name,count] of Object.entries(r.defects || {})) defects[name] = (defects[name] || 0) + count;
@@ -190,8 +190,10 @@ document.querySelectorAll(".nav-tab").forEach(button => button.addEventListener(
 }));
 $("#from-date").addEventListener("change", render); $("#to-date").addEventListener("change", render);
 $("#material-filter").addEventListener("change", render);
-$("#part-filter").addEventListener("input", render);
-$("#clear-filter").addEventListener("click",()=>{$("#from-date").value="";$("#to-date").value="";$("#part-filter").value="";$("#material-filter").value="";render();});
+function applyPartFilter() { state.partQuery = $("#part-filter").value.trim().toLocaleLowerCase("th"); render(); }
+$("#part-search-button").addEventListener("click", applyPartFilter);
+$("#part-filter").addEventListener("keydown",event=>{if(event.key === "Enter"){event.preventDefault();applyPartFilter();}});
+$("#clear-filter").addEventListener("click",()=>{$("#from-date").value="";$("#to-date").value="";$("#part-filter").value="";state.partQuery="";$("#material-filter").value="";render();});
 $("#records-form").addEventListener("submit",event=>{event.preventDefault();loadRecordPage(0);});
 $("#clear-record-filters").addEventListener("click",()=>{$("#record-search").value="";$("#records-from").value="";$("#records-to").value="";loadRecordPage(0);});
 $("#records-prev").addEventListener("click",()=>loadRecordPage(Math.max(0,state.recordOffset-100)));
