@@ -27,17 +27,6 @@ async function request(path, options = {}) {
   return payload;
 }
 export const tabs = ["Part", "Material", "Part.Materials", "Machine", "WasteRecord"];
-export const userHeaders = ["UserID", "PasswordHash", "Role", "Permissions", "Active", "MustChangePassword", "CreatedAt"];
-export async function ensureUserSheet() {
-  if (process.env.GOOGLE_SHEETS_PRIVATE_CONFIRMED !== "true") throw new Error("Set GOOGLE_SHEETS_PRIVATE_CONFIRMED=true only after restricting Google Sheet access to approved accounts");
-  const meta = await request("?fields=sheets.properties(sheetId,title)");
-  const userSheet = meta.sheets?.find(sheet => sheet.properties?.title === "User");
-  if (userSheet) return userSheet.properties.sheetId;
-  const created = await request(":batchUpdate", { method: "POST", body: JSON.stringify({ requests: [{ addSheet: { properties: { title: "User", gridProperties: { rowCount: 1000, columnCount: userHeaders.length } } } }] }) });
-  const id = created.replies?.[0]?.addSheet?.properties?.sheetId;
-  await writeRows("User", [userHeaders]);
-  return id;
-}
 export async function readRows(tab) {
   const range = encodeURIComponent("'" + tab.replace(/'/g, "''") + "'!A:ZZ");
   const payload = await request("/values/" + range + "?valueRenderOption=UNFORMATTED_VALUE");
@@ -54,5 +43,4 @@ export async function replaceRows(tab, rows) {
   if (rows.length) await writeRows(tab, rows, "replace");
 }
 export async function sheetMeta() { return request("?fields=sheets.properties(sheetId,title,gridProperties)"); }
-export async function createUserSheetIfMissing() { await ensureUserSheet(); }
 

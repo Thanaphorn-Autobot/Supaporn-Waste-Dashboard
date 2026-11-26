@@ -103,13 +103,7 @@
         </section>
 
         <section id="system-page" class="page-view" hidden>
-          <section class="page-heading records-heading"><div><p class="eyebrow">SYSTEM DATA <span>•</span> ACCESS CONTROL</p><h1>ข้อมูลระบบ</h1><p class="intro">จัดการผู้ใช้ สิทธิ์ และข้อมูลหลังบ้าน</p></div></section>
-          <section id="user-management" class="panel system-panel" hidden>
-            <div class="panel-head"><div><p class="panel-kicker">USER ACCESS</p><h2>จัดการผู้ใช้และสิทธิ์</h2></div></div>
-            <form id="new-user-form" class="admin-user-form"><label>User ID<input id="new-user-id" required minlength="3" maxlength="40" /></label><label>รหัสผ่านเริ่มต้น<input id="new-user-password" type="password" required minlength="6" /></label><button class="search-submit" type="submit">เพิ่มผู้ใช้</button></form>
-            <div class="table-scroll"><table class="permissions-table"><thead><tr><th>User ID</th><th>สถานะ</th><th>สิทธิ์ข้อมูล</th><th>จัดการ</th></tr></thead><tbody id="users-table"></tbody></table></div>
-            <div id="permission-editor" class="permission-editor" hidden></div>
-          </section>
+          <section class="page-heading records-heading"><div><p class="eyebrow">SYSTEM DATA <span>•</span> ADMIN</p><h1>ข้อมูลระบบ</h1><p class="intro">จัดการและนำเข้าข้อมูลหลังบ้าน</p></div></section>
           <section id="database-management" class="panel system-panel" hidden>
             <div class="panel-head"><div><p class="panel-kicker">DATABASE</p><h2>จัดการฐานข้อมูล</h2></div></div>
             <div class="database-toolbar"><label>เลือกชีต<select id="database-sheet"><option value="">เลือกชีต</option></select></label><button id="load-database" class="small-action" type="button">ดูข้อมูล</button><button id="download-template" class="small-action" type="button">ดาวน์โหลดแบบฟอร์ม CSV</button><button id="download-all" class="small-action" type="button">ดาวน์โหลดข้อมูลทั้งหมด</button></div>
@@ -125,8 +119,7 @@
       <footer><span>Plastic Waste Monitor</span><span>ข้อมูลส่วนบุคคลและรายละเอียดการผลิตแสดงเมื่อเปิดการ์ดรายการ</span></footer>
     </div>
     <dialog id="detail-dialog" class="detail-dialog"><form method="dialog"><button class="dialog-close" aria-label="ปิด">×</button></form><div id="detail-content"></div></dialog>
-    <dialog id="login-dialog" class="auth-dialog"><form id="login-form"><p class="panel-kicker">SUPAPORN WASTE DASHBOARD</p><h2>เข้าสู่ระบบข้อมูลระบบ</h2><label>User ID<input id="login-user" autocomplete="username" required /></label><label>รหัสผ่าน<input id="login-password" type="password" autocomplete="current-password" required /></label><p id="login-error" class="form-error" hidden></p><button class="search-submit" type="submit">เข้าสู่ระบบ</button><button id="login-cancel" class="small-action" type="button">กลับหน้า Dashboard</button></form></dialog>
-    <dialog id="password-dialog" class="auth-dialog"><form id="password-form"><p class="panel-kicker">เปลี่ยนรหัสผ่าน</p><h2>ตั้งรหัสผ่านใหม่</h2><p>กรุณาเปลี่ยนรหัสผ่านเริ่มต้นก่อนใช้งาน</p><label>รหัสผ่านปัจจุบัน<input id="current-password" type="password" autocomplete="current-password" required /></label><label>รหัสผ่านใหม่<input id="new-password" type="password" autocomplete="new-password" minlength="6" required /></label><label>ยืนยันรหัสผ่านใหม่<input id="confirm-password" type="password" autocomplete="new-password" minlength="6" required /></label><p id="password-error" class="form-error" hidden></p><button class="search-submit" type="submit">เปลี่ยนรหัสผ่าน</button></form></dialog>
+    <dialog id="login-dialog" class="auth-dialog"><form id="login-form"><p class="panel-kicker">SUPAPORN WASTE DASHBOARD</p><h2>เข้าสู่ระบบ Admin</h2><label>รหัสผ่าน<input id="login-password" type="password" autocomplete="current-password" required /></label><p id="login-error" class="form-error" hidden></p><button class="search-submit" type="submit">เข้าสู่ระบบ</button><button id="login-cancel" class="small-action" type="button">กลับหน้า Dashboard</button></form></dialog>
     <script src="/app.js"></script>
   </body>
 </html>

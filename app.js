@@ -240,10 +240,6 @@ $("#detail-content").addEventListener("click",event=>{
   $("#detail-content").innerHTML = renderPartDialog(button.dataset.partView);
   $("#detail-dialog").scrollTop = 0;
 });
-function hasPermission(name, level = "view") {
-  if (state.user?.role === "admin") return true;
-  return state.user?.permissions?.[name]?.[level] === true;
-}
 async function apiJSON(url, options = {}) {
   const response = await fetch(url, { cache: "no-store", ...options, headers: { ...(options.body ? { "Content-Type": "application/json" } : {}), ...(options.headers || {}) } });
   const payload = await response.json().catch(() => ({}));
@@ -251,11 +247,9 @@ async function apiJSON(url, options = {}) {
   return payload;
 }
 function applyAccess() {
-  const system = state.user?.role === "admin" || ["Part","Material","Part.Materials","Machine","WasteRecord"].some(tab=>hasPermission(tab));
-  $("#user-management").hidden = state.user?.role !== "admin";
-  $("#database-management").hidden = !system;
+  $("#database-management").hidden = !state.user;
   $("#signed-in-user").hidden = !state.user;
-  $("#signed-in-user").textContent = state.user ? state.user.userId + (state.user.role === "admin" ? " · Admin" : "") : "";
+  $("#signed-in-user").textContent = state.user ? "Admin" : "";
   $("#logout-button").hidden = !state.user;
 }
 function setPage(pageId) {
@@ -268,62 +262,25 @@ async function openPage(pageId) {
   if(pageId!=="system-page"){setPage(pageId);return;}
   state.pendingPage=pageId;
   if(!state.user){
-    try{const {user}=await apiJSON("/api/auth?action=me");if(user)state.user=user;}
+    try{const {authenticated}=await apiJSON("/api/auth?action=me");if(authenticated)state.user={role:"admin",userId:"Admin"};}
     catch(error){$("#login-error").hidden=false;$("#login-error").textContent=error.message;}
   }
   if(!state.user){$("#login-dialog").showModal();return;}
-  if(state.user.mustChangePassword){$("#password-dialog").showModal();return;}
-  const system=state.user.role==="admin"||["Part","Material","Part.Materials","Machine","WasteRecord"].some(tab=>hasPermission(tab));
-  if(!system){alert("บัญชีนี้ยังไม่ได้รับสิทธิ์เข้าถึงข้อมูลระบบ");return;}
   applyAccess();setPage(pageId);
 }
 $("#login-form").addEventListener("submit",async event=>{
   event.preventDefault(); $("#login-error").hidden=true;
-  try { const {user}=await apiJSON("/api/auth?action=login",{method:"POST",body:JSON.stringify({username:$("#login-user").value,password:$("#login-password").value})}); state.user=user; $("#login-dialog").close(); applyAccess(); if(user.mustChangePassword)$("#password-dialog").showModal(); else openPage(state.pendingPage); }
+  try { await apiJSON("/api/auth?action=login",{method:"POST",body:JSON.stringify({password:$("#login-password").value})}); state.user={role:"admin",userId:"Admin"}; $("#login-form").reset(); $("#login-dialog").close(); applyAccess(); openPage(state.pendingPage); }
   catch(error){$("#login-error").hidden=false;$("#login-error").textContent=error.message;}
 });
 $("#login-cancel").addEventListener("click",()=>{$("#login-dialog").close();setPage("dashboard-page");});
 $("#logout-button").addEventListener("click",async()=>{await apiJSON("/api/auth?action=logout",{method:"POST",body:"{}"}).catch(()=>{});location.reload();});
-$("#password-form").addEventListener("submit",async event=>{
-  event.preventDefault(); $("#password-error").hidden=true;
-  if($("#new-password").value!==$("#confirm-password").value){$("#password-error").hidden=false;$("#password-error").textContent="รหัสผ่านใหม่ไม่ตรงกัน";return;}
-  try { await apiJSON("/api/auth?action=change-password",{method:"POST",body:JSON.stringify({currentPassword:$("#current-password").value,newPassword:$("#new-password").value})}); state.user.mustChangePassword=false; $("#password-dialog").close(); $("#password-form").reset(); applyAccess(); openPage(state.pendingPage); }
-  catch(error){$("#password-error").hidden=false;$("#password-error").textContent=error.message;}
-});
 async function loadSystemPage() {
   const select=$("#database-sheet"), current=select.value;
-  const tabs=["Part","Material","Part.Materials","Machine","WasteRecord"].filter(tab=>hasPermission(tab));
+  const tabs=["Part","Material","Part.Materials","Machine","WasteRecord"];
   select.innerHTML='<option value="">เลือกชีต</option>'+tabs.map(tab=>'<option value="'+escapeHTML(tab)+'">'+escapeHTML(tab)+'</option>').join("");
   if(tabs.includes(current))select.value=current;
-  if(state.user?.role==="admin")loadUsers();
 }
-async function loadUsers() {
-  try { const {users}=await apiJSON("/api/admin?action=users");
-    $("#users-table").innerHTML=users.map(user=>'<tr><td class="part-code">'+escapeHTML(user.userId)+(user.role==="admin"?' <span class="unit-tag">Admin</span>':'')+'</td><td>'+(user.active?'ใช้งาน':'ปิดใช้งาน')+(user.mustChangePassword?' · รอเปลี่ยนรหัส':'')+'</td><td>'+Object.entries(user.permissions||{}).filter(([,p])=>p.view||p.edit).map(([name,p])=>escapeHTML(name)+(p.edit?' (แก้ไข)':' (ดู)')).join(', ')+'</td><td>'+(user.role==="admin"?'—':'<button class="small-action" type="button" data-edit-user="'+escapeHTML(user.userId)+'">สิทธิ์</button> <button class="small-action" type="button" data-reset-user="'+escapeHTML(user.userId)+'">รีเซ็ตรหัส</button>')+'</td></tr>').join("")||'<tr><td colspan="4">ยังไม่มีผู้ใช้</td></tr>';
-  } catch(error){$("#users-table").innerHTML='<tr><td colspan="4">'+escapeHTML(error.message)+'</td></tr>';}
-}
-function permissionForm(userId, permissions={}) {
-  const areas=["Part","Material","Part.Materials","Machine","WasteRecord"];
-  $("#permission-editor").hidden=false;
-  $("#permission-editor").innerHTML='<h3>กำหนดสิทธิ์: '+escapeHTML(userId)+'</h3><div class="permission-grid">'+areas.map(name=>{const p=permissions[name]||{};return '<div><strong>'+escapeHTML(name)+'</strong><label><input type="checkbox" data-grant-view="'+escapeHTML(name)+'" '+(p.view?'checked':'')+'> ดู</label><label><input type="checkbox" data-grant-edit="'+escapeHTML(name)+'" '+(p.edit?'checked':'')+'> แก้ไข</label></div>';}).join("")+'</div><label class="active-toggle"><input id="user-active" type="checkbox" checked> เปิดใช้งานบัญชี</label><div class="form-actions"><button id="save-user-permissions" class="search-submit" type="button">บันทึกสิทธิ์</button><button id="cancel-user-permissions" class="small-action" type="button">ยกเลิก</button></div>';
-  $("#permission-editor").dataset.userId=userId;
-}
-$("#new-user-form").addEventListener("submit",async event=>{
-  event.preventDefault();try{await apiJSON("/api/admin",{method:"POST",body:JSON.stringify({action:"create-user",userId:$("#new-user-id").value,password:$("#new-user-password").value})});event.target.reset();await loadUsers();}catch(error){alert(error.message);}
-});
-$("#users-table").addEventListener("click",async event=>{
-  const edit=event.target.closest("[data-edit-user]");
-  if(edit){const {users}=await apiJSON("/api/admin?action=users"), user=users.find(item=>item.userId===edit.dataset.editUser);if(user)permissionForm(user.userId,user.permissions);return;}
-  const reset=event.target.closest("[data-reset-user]");
-  if(reset){const password=prompt("กำหนดรหัสผ่านชั่วคราว (อย่างน้อย 6 ตัวอักษร)");if(!password)return;try{await apiJSON("/api/admin",{method:"POST",body:JSON.stringify({action:"reset-password",userId:reset.dataset.resetUser,password})});await loadUsers();alert("ตั้งรหัสใหม่แล้ว ผู้ใช้ต้องเปลี่ยนรหัสเมื่อเข้าสู่ระบบ");}catch(error){alert(error.message);}}
-});
-$("#permission-editor").addEventListener("change",event=>{const edit=event.target.closest("[data-grant-edit]");if(edit&&edit.checked){const view=$("#permission-editor"+' [data-grant-view="'+CSS.escape(edit.dataset.grantEdit)+'"]');if(view)view.checked=true;}});
-$("#permission-editor").addEventListener("click",async event=>{
-  if(event.target.id==="cancel-user-permissions"){$("#permission-editor").hidden=true;return;}
-  if(event.target.id!=="save-user-permissions")return;
-  const permissions={};for(const name of ["Part","Material","Part.Materials","Machine","WasteRecord"]){const view=$("#permission-editor"+' [data-grant-view="'+CSS.escape(name)+'"]').checked,edit=$("#permission-editor"+' [data-grant-edit="'+CSS.escape(name)+'"]');permissions[name]={view:view||edit.checked,edit:edit.checked};}
-  try{await apiJSON("/api/admin",{method:"POST",body:JSON.stringify({action:"update-user",userId:event.currentTarget.dataset.userId,active:$("#user-active").checked,permissions})});$("#permission-editor").hidden=true;await loadUsers();}catch(error){alert(error.message);}
-});
 function csvEscape(value){const text=String(value??"");return /[",\r\n]/.test(text)?'"'+text.replace(/"/g,'""')+'"':text;}
 function saveCSV(filename,headers,rows){const csv="\uFEFF"+[headers,...rows].map(row=>row.map(csvEscape).join(",")).join("\r\n");const link=document.createElement("a");link.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));link.download=filename;link.click();URL.revokeObjectURL(link.href);}
 $("#export-all").addEventListener("change",event=>{$("#export-from").disabled=event.target.checked;$("#export-to").disabled=event.target.checked;});
@@ -333,6 +290,6 @@ $("#download-template").addEventListener("click",async()=>{const tab=$("#databas
 $("#download-all").addEventListener("click",async()=>{try{const {data}=await apiJSON("/api/admin?action=all");const link=document.createElement("a");link.href=URL.createObjectURL(new Blob(["\uFEFF"+JSON.stringify(data,null,2)],{type:"application/json;charset=utf-8"}));link.download="database-export.json";link.click();URL.revokeObjectURL(link.href);}catch(error){alert(error.message);}});
 function parseCSV(source){const text=source.replace(/^\uFEFF/,"");const rows=[];let row=[],cell="",quoted=false;for(let i=0;i<text.length;i++){const c=text[i];if(quoted){if(c==='"'&&text[i+1]==='"'){cell+='"';i++;}else if(c==='"')quoted=false;else cell+=c;}else if(c==='"')quoted=true;else if(c===","){row.push(cell);cell="";}else if(c==="\n"){row.push(cell.replace(/\r$/, ""));if(row.some(value=>value!==""))rows.push(row);row=[];cell="";}else cell+=c;}row.push(cell.replace(/\r$/, ""));if(row.some(value=>value!==""))rows.push(row);return {headers:rows[0]||[],rows:rows.slice(1)};}
 $("#preview-import").addEventListener("click",async()=>{const file=$("#import-file").files[0],tab=$("#database-sheet").value;if(!file||!tab){alert("เลือกชีตและไฟล์ CSV ก่อน");return;}try{const parsed=parseCSV(await file.text()),result=await apiJSON("/api/admin",{method:"POST",body:JSON.stringify({action:"preview-import",tab,mode:$("#import-mode").value,...parsed})});state.importData={tab,mode:$("#import-mode").value,...parsed};state.importReport=result.report;const report=result.report;$("#import-report").hidden=false;$("#import-report").innerHTML='<strong>ตรวจพบ '+result.rowCount+' แถว</strong>'+(report.problems.length?'<p class="form-error">ข้อผิดพลาด: '+report.problems.map(escapeHTML).join(" · ")+'</p>':'<p>ไม่พบข้อมูลซ้ำหรือรูปแบบผิด</p>')+(report.warnings.length?'<p>รายการเตือน: '+report.warnings.map(escapeHTML).join(" · ")+'</p>':'');$("#commit-import").disabled=!report.valid;}catch(error){$("#import-report").hidden=false;$("#import-report").textContent=error.message;$("#commit-import").disabled=true;}});
-$("#commit-import").addEventListener("click",async()=>{if(!state.importData||!state.importReport?.valid)return;const warning=state.importReport.warnings.length>0;const text=state.importData.mode==="replace"?"การนำเข้าแบบแทนที่จะลบข้อมูลเดิมทั้งชีตและใส่ข้อมูลจากไฟล์แทน":"ยืนยันเพิ่มข้อมูลจากไฟล์ต่อท้ายชีต";if(!confirm(text+(warning?" และมีรายการเตือนที่ตรวจพบ":"")+" ต้องการดำเนินการหรือไม่?"))return;try{await apiJSON("/api/admin",{method:"POST",body:JSON.stringify({action:"import",...state.importData,acceptWarnings:warning})});alert("นำเข้าข้อมูลเรียบร้อย");$("#import-file").value="";state.importData=null;state.importReport=null;$("#import-report").hidden=true;$("#commit-import").disabled=true;$("#load-database").click();if(state.user&&hasPermission("dashboard"))loadData();}catch(error){if(error.payload?.report){state.importReport=error.payload.report;$("#import-report").hidden=false;$("#import-report").innerHTML='<p>'+error.message+'</p>'+error.payload.report.warnings.map(escapeHTML).join(" · ");}else alert(error.message);}});
+$("#commit-import").addEventListener("click",async()=>{if(!state.importData||!state.importReport?.valid)return;const warning=state.importReport.warnings.length>0;const text=state.importData.mode==="replace"?"การนำเข้าแบบแทนที่จะลบข้อมูลเดิมทั้งชีตและใส่ข้อมูลจากไฟล์แทน":"ยืนยันเพิ่มข้อมูลจากไฟล์ต่อท้ายชีต";if(!confirm(text+(warning?" และมีรายการเตือนที่ตรวจพบ":"")+" ต้องการดำเนินการหรือไม่?"))return;try{await apiJSON("/api/admin",{method:"POST",body:JSON.stringify({action:"import",...state.importData,acceptWarnings:warning})});alert("นำเข้าข้อมูลเรียบร้อย");$("#import-file").value="";state.importData=null;state.importReport=null;$("#import-report").hidden=true;$("#commit-import").disabled=true;$("#load-database").click();loadData();}catch(error){if(error.payload?.report){state.importReport=error.payload.report;$("#import-report").hidden=false;$("#import-report").innerHTML='<p>'+error.message+'</p>'+error.payload.report.warnings.map(escapeHTML).join(" · ");}else alert(error.message);}});
 loadData();
 

@@ -1,9 +1,7 @@
-import { allUsers, addUser, currentUser, hashPassword, publicUser, updateUserRows } from "./_lib/auth.js";
-import { readRows, replaceRows, tabs, userHeaders, writeRows } from "./_lib/sheets.js";
+import { currentAdmin } from "./_lib/auth.js";
+import { readRows, replaceRows, tabs, writeRows } from "./_lib/sheets.js";
 
 const key = value => String(value || "").trim().toLocaleLowerCase("th").replace(/\s+/g, " ");
-const permissionNames = [...tabs];
-const defaultPermissions = Object.fromEntries(permissionNames.map(name => [name, { view: false, edit: false }]));
 const json = (res, status, data) => res.status(status).json(data);
 function csvDate(value) {
   if (typeof value === "number") return new Date(Date.UTC(1899, 11, 30) + Math.round(value) * 86400000).toISOString().slice(0, 10);
@@ -76,59 +74,24 @@ export default async function handler(req, res) {
       res.setHeader("Cache-Control","public, s-maxage=60, stale-while-revalidate=120");
       return json(res,200,{headers:headers.filter((_,i)=>i!==1),rows:data});
     }
-    const user = await currentUser(req);
-    if (!user) return json(res,401,{error:"กรุณาเข้าสู่ระบบ"});
-    if (user.mustChangePassword) return json(res,403,{error:"กรุณาเปลี่ยนรหัสผ่านก่อนใช้งาน",mustChangePassword:true});
+    if (!currentAdmin(req)) return json(res,401,{error:"กรุณาเข้าสู่ระบบ Admin"});
     if (req.method === "GET") {
       const action = String(req.query?.action || "sheets");
-      if (action === "users") { if(user.role!=="admin")return json(res,403,{error:"เฉพาะ Admin เท่านั้น"}); return json(res,200,{users:(await allUsers()).map(publicUser)}); }
       if (action === "sheets") return json(res,200,{sheets:tabs});
       if (action === "sheet" || action === "template") {
         const tab = String(req.query?.tab || "");
         if (!tabs.includes(tab)) return json(res,400,{error:"ไม่พบชีตที่เลือก"});
-        const allowed = user.role === "admin" || user.permissions?.[tab]?.view;
-        if (!allowed) return json(res,403,{error:"ไม่มีสิทธิ์ดูข้อมูลชีตนี้"});
         const rows = await readRows(tab);
         return json(res,200,{tab,headers:rows[0]||[],rows:action === "sheet" ? rows.slice(1) : []});
       }
-      if (action === "all") {
-        const denied = tabs.filter(tab => user.role !== "admin" && !user.permissions?.[tab]?.view);
-        if (denied.length) return json(res,403,{error:"ต้องมีสิทธิ์ดูข้อมูลทุกชีตก่อนดาวน์โหลดทั้งหมด",denied});
-        return json(res,200,{data:await loadExisting()});
-      }
+      if (action === "all") return json(res,200,{data:await loadExisting()});
       return json(res,400,{error:"ไม่รองรับคำขอนี้"});
     }
     if (req.method !== "POST") return json(res,405,{error:"Method not allowed"});
     const action=String(req.body?.action||"");
-    if (action === "create-user") {
-      if(user.role!=="admin")return json(res,403,{error:"เฉพาะ Admin เท่านั้น"});
-      const userId=String(req.body?.userId||"").trim(), password=String(req.body?.password||"");
-      if (!/^[\p{L}\p{N}._-]{3,40}$/u.test(userId)) return json(res,400,{error:"User ID ต้องยาว 3–40 ตัว และใช้ตัวอักษร ตัวเลข . _ - ได้"});
-      if(password.length<6)return json(res,400,{error:"รหัสผ่านชั่วคราวต้องมีอย่างน้อย 6 ตัวอักษร"});
-      const users=await allUsers(); if(users.some(entry=>String(entry.UserID).toLocaleLowerCase()===userId.toLocaleLowerCase()))return json(res,409,{error:"มี User ID นี้แล้ว"});
-      const permissions={...defaultPermissions,...(req.body?.permissions||{})};
-      await addUser({UserID:userId,PasswordHash:hashPassword(password),Role:"user",Permissions:permissions,Active:true,MustChangePassword:true,CreatedAt:new Date().toISOString()});
-      return json(res,201,{ok:true});
-    }
-    if (action === "update-user") {
-      if(user.role!=="admin")return json(res,403,{error:"เฉพาะ Admin เท่านั้น"});
-      const users=await allUsers(), target=users.find(entry=>String(entry.UserID).toLocaleLowerCase()===String(req.body?.userId||"").toLocaleLowerCase());
-      if(!target)return json(res,404,{error:"ไม่พบบัญชีผู้ใช้"});
-      if(String(target.Role).toLowerCase()==="admin")return json(res,400,{error:"ไม่สามารถแก้สิทธิ์บัญชี Admin ผ่านหน้านี้"});
-      target.Active=Boolean(req.body?.active); target.Permissions={...defaultPermissions,...(req.body?.permissions||{})};
-      await updateUserRows(users); return json(res,200,{ok:true});
-    }
-    if (action === "reset-password") {
-      if(user.role!=="admin")return json(res,403,{error:"เฉพาะ Admin เท่านั้น"});
-      const password=String(req.body?.password||""); if(password.length<6)return json(res,400,{error:"รหัสผ่านชั่วคราวต้องมีอย่างน้อย 6 ตัวอักษร"});
-      const users=await allUsers(), target=users.find(entry=>String(entry.UserID).toLocaleLowerCase()===String(req.body?.userId||"").toLocaleLowerCase());
-      if(!target)return json(res,404,{error:"ไม่พบบัญชีผู้ใช้"});
-      target.PasswordHash=hashPassword(password); target.MustChangePassword=true; await updateUserRows(users); return json(res,200,{ok:true});
-    }
     if (action === "preview-import" || action === "import") {
       const tab=String(req.body?.tab||""), mode=req.body?.mode==="append"?"append":"replace";
       if(!tabs.includes(tab))return json(res,400,{error:"ไม่พบชีตที่เลือก"});
-      if(user.role!=="admin"&&!user.permissions?.[tab]?.edit)return json(res,403,{error:"ไม่มีสิทธิ์แก้ไขชีตนี้"});
       const data=await loadExisting(), existing=data[tab], headers=req.body?.headers, rows=req.body?.rows;
       const report=inspectImport(tab,headers,rows,mode==="append"?existing: [existing[0]||[]]);
       if(action==="preview-import")return json(res,200,{report,rowCount:Array.isArray(rows)?rows.length:0});
