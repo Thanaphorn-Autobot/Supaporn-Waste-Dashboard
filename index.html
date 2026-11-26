@@ -25,7 +25,7 @@
         <nav class="page-nav" aria-label="เมนูหลัก">
           <button class="nav-tab active" type="button" data-page="dashboard-page">ภาพรวม Dashboard</button>
           <button class="nav-tab" type="button" data-page="records-page">รายการของเสีย</button>
-          <button class="nav-tab" type="button" data-page="system-page" id="system-nav" hidden>ข้อมูลระบบ</button>
+          <button class="nav-tab" type="button" data-page="system-page" id="system-nav">ข้อมูลระบบ</button>
         </nav>
         <div id="dashboard-page" class="page-view">
         <section class="page-heading">
@@ -125,7 +125,7 @@
       <footer><span>Plastic Waste Monitor</span><span>ข้อมูลส่วนบุคคลและรายละเอียดการผลิตแสดงเมื่อเปิดการ์ดรายการ</span></footer>
     </div>
     <dialog id="detail-dialog" class="detail-dialog"><form method="dialog"><button class="dialog-close" aria-label="ปิด">×</button></form><div id="detail-content"></div></dialog>
-    <dialog id="login-dialog" class="auth-dialog"><form id="login-form"><p class="panel-kicker">SUPAPORN WASTE DASHBOARD</p><h2>เข้าสู่ระบบ</h2><label>User ID<input id="login-user" autocomplete="username" required /></label><label>รหัสผ่าน<input id="login-password" type="password" autocomplete="current-password" required /></label><p id="login-error" class="form-error" hidden></p><button class="search-submit" type="submit">เข้าสู่ระบบ</button></form></dialog>
+    <dialog id="login-dialog" class="auth-dialog"><form id="login-form"><p class="panel-kicker">SUPAPORN WASTE DASHBOARD</p><h2>เข้าสู่ระบบข้อมูลระบบ</h2><label>User ID<input id="login-user" autocomplete="username" required /></label><label>รหัสผ่าน<input id="login-password" type="password" autocomplete="current-password" required /></label><p id="login-error" class="form-error" hidden></p><button class="search-submit" type="submit">เข้าสู่ระบบ</button><button id="login-cancel" class="small-action" type="button">กลับหน้า Dashboard</button></form></dialog>
     <dialog id="password-dialog" class="auth-dialog"><form id="password-form"><p class="panel-kicker">เปลี่ยนรหัสผ่าน</p><h2>ตั้งรหัสผ่านใหม่</h2><p>กรุณาเปลี่ยนรหัสผ่านเริ่มต้นก่อนใช้งาน</p><label>รหัสผ่านปัจจุบัน<input id="current-password" type="password" autocomplete="current-password" required /></label><label>รหัสผ่านใหม่<input id="new-password" type="password" autocomplete="new-password" minlength="6" required /></label><label>ยืนยันรหัสผ่านใหม่<input id="confirm-password" type="password" autocomplete="new-password" minlength="6" required /></label><p id="password-error" class="form-error" hidden></p><button class="search-submit" type="submit">เปลี่ยนรหัสผ่าน</button></form></dialog>
     <script src="/app.js"></script>
   </body>

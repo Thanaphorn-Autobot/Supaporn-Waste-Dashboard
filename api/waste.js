@@ -1,4 +1,3 @@
-import { requireUser } from "./_lib/auth.js";
 import { readRows } from "./_lib/sheets.js";
 const excluded = new Set(["วันที่ผลิต", "date", "production date", "partid", "part no", "partname", "part name", "po no", "จำนวนสั่งผลิต", "จำนวนผลิต", "ค้างผลิต", "ng", "% ng", "remark", "m/c no"]);
 const clean = value => String(value ?? "").trim().toLocaleLowerCase("th").replace(/\s+/g, " ");
@@ -33,11 +32,8 @@ function numeric(value) {
 
 export default async function handler(req, res) {
   if (req.method !== "GET") return res.status(405).json({ error: "Method not allowed" });
-  res.setHeader("Cache-Control", "private, no-store, max-age=0");
+  res.setHeader("Cache-Control", "public, s-maxage=60, stale-while-revalidate=120");
   try {
-    const permission = req.query?.view === "records" ? "records" : "dashboard";
-    const user = await requireUser(req, res, permission, "view");
-    if (!user) return;
     const [wasteRows, partRows, mappingRows] = await Promise.all([readTab("WasteRecord"), readTab("Part"), readTab("Part.Materials")]);
     const partsById = new Map();
     for (const row of partRows) {

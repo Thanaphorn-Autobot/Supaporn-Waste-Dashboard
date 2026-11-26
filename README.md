@@ -23,7 +23,8 @@ The first authenticated request creates a `User` tab with columns `UserID`, `Pas
 
 ## Access and data management
 
-- Admins can create users, reset passwords, enable or disable accounts, and assign view/edit access for the dashboard, waste records, and each data tab.
+- The Dashboard, waste records, and WasteRecord CSV export are available without signing in. Sign-in is requested only when entering System Data.
+- Admins can create users, reset passwords, enable or disable accounts, and assign view/edit access for each database tab.
 - The system data page supports per-tab CSV templates, a full data JSON download, tab previews, and CSV import preview with duplicate and reference checks. Replace imports require confirmation; warnings require explicit acknowledgement.
 - WasteRecord export supports a date range or all records and omits column B.
 - Sheets available for database management: `Part`, `Material`, `Part.Materials`, `Machine`, and `WasteRecord`.

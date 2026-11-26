@@ -2,7 +2,7 @@ import { allUsers, addUser, currentUser, hashPassword, publicUser, updateUserRow
 import { readRows, replaceRows, tabs, userHeaders, writeRows } from "./_lib/sheets.js";
 
 const key = value => String(value || "").trim().toLocaleLowerCase("th").replace(/\s+/g, " ");
-const permissionNames = ["dashboard", "records", ...tabs];
+const permissionNames = [...tabs];
 const defaultPermissions = Object.fromEntries(permissionNames.map(name => [name, { view: false, edit: false }]));
 const json = (res, status, data) => res.status(status).json(data);
 function csvDate(value) {
@@ -66,6 +66,16 @@ async function loadExisting() { const data = {}; await Promise.all(tabs.map(asyn
 export default async function handler(req, res) {
   res.setHeader("Cache-Control", "private, no-store, max-age=0");
   try {
+    if (req.method === "GET" && String(req.query?.action || "") === "export") {
+      const rows=await readRows("WasteRecord"), headers=rows[0]||[], dateIdx=headerIndex(headers,["วันที่ผลิต","date","production date"]);
+      const from=String(req.query?.from||""), to=String(req.query?.to||""), all=String(req.query?.all||"")==="true";
+      if(!all&&!from&&!to)return json(res,400,{error:"เลือกช่วงวันที่หรือเลือกส่งออกทั้งหมดก่อน"});
+      if(from&&to&&from>to)return json(res,400,{error:"วันที่เริ่มต้นต้องไม่อยู่หลังวันที่สิ้นสุด"});
+      if(!all&&dateIdx<0)return json(res,400,{error:"ไม่พบคอลัมน์วันที่ผลิตในชีต WasteRecord"});
+      const data=rows.slice(1).filter(row=>{if(all||dateIdx<0)return true;const date=csvDate(row[dateIdx]);return (!from||date>=from)&&(!to||date<=to);}).map(row=>row.filter((_,i)=>i!==1));
+      res.setHeader("Cache-Control","public, s-maxage=60, stale-while-revalidate=120");
+      return json(res,200,{headers:headers.filter((_,i)=>i!==1),rows:data});
+    }
     const user = await currentUser(req);
     if (!user) return json(res,401,{error:"กรุณาเข้าสู่ระบบ"});
     if (user.mustChangePassword) return json(res,403,{error:"กรุณาเปลี่ยนรหัสผ่านก่อนใช้งาน",mustChangePassword:true});
@@ -85,17 +95,6 @@ export default async function handler(req, res) {
         const denied = tabs.filter(tab => user.role !== "admin" && !user.permissions?.[tab]?.view);
         if (denied.length) return json(res,403,{error:"ต้องมีสิทธิ์ดูข้อมูลทุกชีตก่อนดาวน์โหลดทั้งหมด",denied});
         return json(res,200,{data:await loadExisting()});
-      }
-      if (action === "export") {
-        const allowed = user.role === "admin" || user.permissions?.WasteRecord?.view;
-        if (!allowed) return json(res,403,{error:"ไม่มีสิทธิ์ส่งออกข้อมูลของเสีย"});
-        const rows = await readRows("WasteRecord"), headers=rows[0]||[], dateIdx=headerIndex(headers,["วันที่ผลิต","date","production date"]);
-        const from=String(req.query?.from||""), to=String(req.query?.to||""), all=String(req.query?.all||"")==="true";
-        if(!all&&!from&&!to)return json(res,400,{error:"เลือกช่วงวันที่หรือเลือกส่งออกทั้งหมดก่อน"});
-        if(from&&to&&from>to)return json(res,400,{error:"วันที่เริ่มต้นต้องไม่อยู่หลังวันที่สิ้นสุด"});
-        if(!all&&dateIdx<0)return json(res,400,{error:"ไม่พบคอลัมน์วันที่ผลิตในชีต WasteRecord"});
-        const data=rows.slice(1).filter(row=>{if(all||dateIdx<0||(!from&&!to))return true;const date=csvDate(row[dateIdx]);return (!from||date>=from)&&(!to||date<=to);}).map(row=>row.filter((_,i)=>i!==1));
-        return json(res,200,{headers:headers.filter((_,i)=>i!==1),rows:data});
       }
       return json(res,400,{error:"ไม่รองรับคำขอนี้"});
     }
