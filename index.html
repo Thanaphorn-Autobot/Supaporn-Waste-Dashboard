@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#f4f6f3" />
     <meta name="description" content="แดชบอร์ดติดตามของเสียจากกระบวนการฉีดพลาสติก" />
-    <title>Plastic Waste Monitor</title>
+    <title>SUPAPORN WASTE DASHBOARD</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -16,21 +16,22 @@
       <header class="topbar">
         <a class="brand" href="/" aria-label="Plastic Waste Monitor">
           <span class="brand-mark"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 4 28 10.8v10.4L16 28 4 21.2V10.8L16 4Z"/><path d="m11 12 5-3 5 3v6l-5 3-5-3v-6Z"/><path d="M16 9v12M11 12l10 6M21 12l-10 6"/></svg></span>
-          <span class="brand-copy"><strong>PLASTIC WASTE</strong><small>PRODUCTION MONITOR</small></span>
+          <span class="brand-copy"><strong>SUPAPORN WASTE DASHBOARD</strong><small>PRODUCTION MONITOR</small></span>
         </a>
-        <div class="topbar-right"><span class="live-indicator"><i></i> LIVE DATA</span><span class="updated" id="updated-at">กำลังเชื่อมต่อข้อมูล…</span></div>
+        <div class="topbar-right"><span class="live-indicator"><i></i> LIVE DATA</span><span class="updated" id="updated-at">กำลังเชื่อมต่อข้อมูล…</span><span id="signed-in-user" class="signed-in-user" hidden></span><button id="logout-button" class="small-action" type="button" hidden>ออกจากระบบ</button></div>
       </header>
 
       <main>
         <nav class="page-nav" aria-label="เมนูหลัก">
           <button class="nav-tab active" type="button" data-page="dashboard-page">ภาพรวม Dashboard</button>
           <button class="nav-tab" type="button" data-page="records-page">รายการของเสีย</button>
+          <button class="nav-tab" type="button" data-page="system-page" id="system-nav" hidden>ข้อมูลระบบ</button>
         </nav>
         <div id="dashboard-page" class="page-view">
         <section class="page-heading">
           <div>
             <p class="eyebrow">QUALITY OVERVIEW <span>•</span> INJECTION MOLDING</p>
-            <h1>ติดตามของเสีย <span>เห็นปัญหา แก้ได้ตรงจุด</span></h1>
+            <h1>ระบบติดตามของเสียงานฉีดพลาสติก</h1>
             <p class="intro">ภาพรวมคุณภาพการผลิตและสาเหตุของเสียจากงานฉีดพลาสติก</p>
           </div>
           <button class="refresh" id="refresh" type="button"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M16.5 9a6.5 6.5 0 0 0-11.2-3L3.5 8M3.5 4.5V8H7M3.5 11a6.5 6.5 0 0 0 11.2 3l1.8-2M16.5 15.5V12H13"/></svg> รีเฟรชข้อมูล</button>
@@ -94,9 +95,26 @@
             <button class="search-submit" type="submit">ค้นหา</button>
             <button class="clear-filter" id="clear-record-filters" type="button">ล้างตัวกรอง</button>
           </form>
+          <div class="export-bar"><strong>ส่งออกข้อมูล WasteRecord</strong><label>ตั้งแต่<input id="export-from" type="date" /></label><label>ถึง<input id="export-to" type="date" /></label><label class="export-all-label"><input id="export-all" type="checkbox" /> ทั้งหมด</label><button id="export-button" class="small-action" type="button">Export</button></div>
           <section class="panel table-panel records-panel">
             <div class="records-scroll"><table><thead><tr><th>วันที่ผลิต</th><th>Part No</th><th>ชื่อชิ้นงาน</th><th>Part Sub No</th><th>Part Sub Name</th><th class="number">จำนวนผลิต</th><th class="number">NG</th><th class="number">%NG</th><th></th></tr></thead><tbody id="records-table"><tr><td colspan="9" class="loading">กำลังโหลด…</td></tr></tbody></table></div>
             <div class="pagination"><span id="page-summary">กำลังโหลดรายการล่าสุด…</span><div><button class="small-action" id="records-prev" type="button" disabled>ก่อนหน้า</button><button class="small-action" id="records-next" type="button" disabled>ถัดไป</button></div></div>
+          </section>
+        </section>
+
+        <section id="system-page" class="page-view" hidden>
+          <section class="page-heading records-heading"><div><p class="eyebrow">SYSTEM DATA <span>•</span> ACCESS CONTROL</p><h1>ข้อมูลระบบ</h1><p class="intro">จัดการผู้ใช้ สิทธิ์ และข้อมูลหลังบ้าน</p></div></section>
+          <section id="user-management" class="panel system-panel" hidden>
+            <div class="panel-head"><div><p class="panel-kicker">USER ACCESS</p><h2>จัดการผู้ใช้และสิทธิ์</h2></div></div>
+            <form id="new-user-form" class="admin-user-form"><label>User ID<input id="new-user-id" required minlength="3" maxlength="40" /></label><label>รหัสผ่านเริ่มต้น<input id="new-user-password" type="password" required minlength="6" /></label><button class="search-submit" type="submit">เพิ่มผู้ใช้</button></form>
+            <div class="table-scroll"><table class="permissions-table"><thead><tr><th>User ID</th><th>สถานะ</th><th>สิทธิ์ข้อมูล</th><th>จัดการ</th></tr></thead><tbody id="users-table"></tbody></table></div>
+            <div id="permission-editor" class="permission-editor" hidden></div>
+          </section>
+          <section id="database-management" class="panel system-panel" hidden>
+            <div class="panel-head"><div><p class="panel-kicker">DATABASE</p><h2>จัดการฐานข้อมูล</h2></div></div>
+            <div class="database-toolbar"><label>เลือกชีต<select id="database-sheet"><option value="">เลือกชีต</option></select></label><button id="load-database" class="small-action" type="button">ดูข้อมูล</button><button id="download-template" class="small-action" type="button">ดาวน์โหลดแบบฟอร์ม CSV</button><button id="download-all" class="small-action" type="button">ดาวน์โหลดข้อมูลทั้งหมด</button></div>
+            <div class="import-toolbar"><label>ไฟล์ CSV สำหรับนำเข้า<input id="import-file" type="file" accept=".csv,text/csv" /></label><label>วิธีนำเข้า<select id="import-mode"><option value="replace">แทนที่ข้อมูลทั้งชีต</option><option value="append">เพิ่มต่อท้าย</option></select></label><button id="preview-import" class="small-action" type="button">ตรวจสอบก่อนนำเข้า</button><button id="commit-import" class="search-submit" type="button" disabled>ยืนยันนำเข้า</button></div>
+            <div id="import-report" class="import-report" hidden></div><div id="database-preview" class="database-preview"></div>
           </section>
         </section>
 
@@ -107,6 +125,8 @@
       <footer><span>Plastic Waste Monitor</span><span>ข้อมูลส่วนบุคคลและรายละเอียดการผลิตแสดงเมื่อเปิดการ์ดรายการ</span></footer>
     </div>
     <dialog id="detail-dialog" class="detail-dialog"><form method="dialog"><button class="dialog-close" aria-label="ปิด">×</button></form><div id="detail-content"></div></dialog>
+    <dialog id="login-dialog" class="auth-dialog"><form id="login-form"><p class="panel-kicker">SUPAPORN WASTE DASHBOARD</p><h2>เข้าสู่ระบบ</h2><label>User ID<input id="login-user" autocomplete="username" required /></label><label>รหัสผ่าน<input id="login-password" type="password" autocomplete="current-password" required /></label><p id="login-error" class="form-error" hidden></p><button class="search-submit" type="submit">เข้าสู่ระบบ</button></form></dialog>
+    <dialog id="password-dialog" class="auth-dialog"><form id="password-form"><p class="panel-kicker">เปลี่ยนรหัสผ่าน</p><h2>ตั้งรหัสผ่านใหม่</h2><p>กรุณาเปลี่ยนรหัสผ่านเริ่มต้นก่อนใช้งาน</p><label>รหัสผ่านปัจจุบัน<input id="current-password" type="password" autocomplete="current-password" required /></label><label>รหัสผ่านใหม่<input id="new-password" type="password" autocomplete="new-password" minlength="6" required /></label><label>ยืนยันรหัสผ่านใหม่<input id="confirm-password" type="password" autocomplete="new-password" minlength="6" required /></label><p id="password-error" class="form-error" hidden></p><button class="search-submit" type="submit">เปลี่ยนรหัสผ่าน</button></form></dialog>
     <script src="/app.js"></script>
   </body>
 </html>

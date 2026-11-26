@@ -14,3 +14,45 @@
 
 .detail-bars{max-height:none;overflow:visible;padding-right:0;scrollbar-gutter:auto}
 
+.text-action{appearance:none;border:0;background:transparent;padding:4px 2px;color:#28684f;font:600 11px 'IBM Plex Sans Thai',sans-serif;white-space:nowrap;cursor:pointer;text-decoration:none;transition:transform .16s ease,color .16s ease}.text-action:hover{color:#176b58;text-decoration:underline;text-underline-offset:4px;transform:translateY(-2px)}.text-action:active{transform:translateY(0)}.text-action:focus-visible{outline:2px solid #78ad94;outline-offset:3px;border-radius:2px}
+[hidden] { display: none !important; }
+.signed-in-user { color: #587066; font-size: 13px; font-weight: 600; }
+.export-bar,.database-toolbar,.import-toolbar,.admin-user-form,.form-actions { display:flex; align-items:end; gap:12px; flex-wrap:wrap; padding:16px 0; }
+.export-bar { justify-content:flex-end; border-bottom:1px solid #e8eeea; margin-bottom:14px; }
+.export-bar strong { margin-right:auto; color:#536a5f; font-size:14px; }
+.export-bar label,.database-toolbar label,.import-toolbar label,.admin-user-form label,.auth-dialog label { display:grid; gap:6px; color:#75857c; font-size:12px; font-weight:600; }
+.export-bar input[type=date],.database-toolbar select,.import-toolbar select,.admin-user-form input,.auth-dialog input { min-height:40px; border:1px solid #dce6df; border-radius:9px; padding:8px 11px; color:#243a32; background:#fff; font:inherit; }
+.export-all-label { display:flex !important; align-items:center; min-height:40px; }
+.system-panel { margin:18px 0; padding:24px; }
+.system-panel .panel-head { margin-bottom:8px; }
+.admin-user-form { border-bottom:1px solid #e8eeea; }
+.admin-user-form label:first-child { min-width:220px; }
+.admin-user-form label:nth-child(2) { min-width:240px; }
+.permissions-table { min-width:760px; }
+.permissions-table td { vertical-align:top; }
+.permissions-table .unit-tag { margin-left:8px; }
+.permission-editor { margin-top:18px; padding:20px; border:1px solid #dfe9e2; border-radius:12px; background:#f8faf8; }
+.permission-editor h3 { margin:0 0 16px; }
+.permission-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:10px; }
+.permission-grid>div { display:grid; grid-template-columns:1fr auto auto; gap:10px; align-items:center; padding:10px; border:1px solid #e4ebe6; border-radius:8px; background:#fff; }
+.permission-grid strong { font-size:13px; }
+.permission-grid label,.active-toggle { display:flex; gap:5px; align-items:center; color:#60746a; font-size:12px; }
+.active-toggle { margin-top:16px; }
+.form-actions { padding-bottom:0; }
+.database-toolbar,.import-toolbar { border-bottom:1px solid #e8eeea; }
+.import-toolbar input[type=file] { display:block; max-width:270px; padding:8px; border:1px solid #dce6df; border-radius:8px; background:#fff; }
+.import-report { margin-top:14px; padding:14px; border-radius:10px; background:#f4f8f4; color:#526a5e; line-height:1.6; }
+.import-report p { margin:6px 0; }
+.database-preview { margin-top:18px; }
+.database-preview .table-scroll { max-height:440px; overflow:auto; }
+.database-preview table { white-space:nowrap; }
+.auth-dialog { width:min(440px,calc(100% - 32px)); border:0; border-radius:18px; padding:30px; color:#233932; box-shadow:0 22px 80px #1b302a55; }
+.auth-dialog::backdrop { background:#31443e99; backdrop-filter:blur(4px); }
+.auth-dialog form { display:grid; gap:14px; }
+.auth-dialog h2 { margin:0 0 4px; }
+.auth-dialog p { margin:0; color:#74847b; }
+.auth-dialog .panel-kicker { color:#7d9186; font-size:11px; font-weight:700; letter-spacing:.14em; }
+.auth-dialog button { min-height:42px; justify-content:center; }
+.form-error { color:#ad493f !important; font-size:13px; }
+@media(max-width:700px){.export-bar,.database-toolbar,.import-toolbar{align-items:stretch}.export-bar strong{width:100%}.export-bar label,.database-toolbar label,.import-toolbar label{flex:1 1 100%}.system-panel{padding:16px}.auth-dialog{padding:24px}}
+

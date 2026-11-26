@@ -1,4 +1,5 @@
-const SHEET_ID = "1Oh4I2T-GyDrMHYwCiCrVGlJLUH1kwqwo8Jgs1Z9tDDM";
+import { requireUser } from "./_lib/auth.js";
+import { readRows } from "./_lib/sheets.js";
 const excluded = new Set(["วันที่ผลิต", "date", "production date", "partid", "part no", "partname", "part name", "po no", "จำนวนสั่งผลิต", "จำนวนผลิต", "ค้างผลิต", "ng", "% ng", "remark", "m/c no"]);
 const clean = value => String(value ?? "").trim().toLocaleLowerCase("th").replace(/\s+/g, " ");
 const ratioNumber = new Intl.NumberFormat("en-US", { maximumFractionDigits: 6 });
@@ -16,15 +17,10 @@ function dateValue(value) {
 }
 
 async function readTab(tab) {
-  const url = "https://docs.google.com/spreadsheets/d/" + SHEET_ID + "/gviz/tq?tqx=out:json&sheet=" + encodeURIComponent(tab);
-  const response = await fetch(url, { headers: { Accept: "application/json,text/plain,*/*" } });
-  if (!response.ok) throw new Error("Google Sheets (" + tab + ") returned " + response.status);
-  const text = await response.text(), start = text.indexOf("("), end = text.lastIndexOf(")");
-  if (start < 0 || end <= start) throw new Error("Google Sheets tab " + tab + " did not return a readable table");
-  const table = JSON.parse(text.slice(start + 1, end)).table;
-  if (!table?.cols || !table?.rows) throw new Error("The " + tab + " tab was not found or has no rows");
-  const labels = table.cols.map((col, i) => clean(col.label || col.id || "column " + (i + 1)));
-  return table.rows.map(row => Object.fromEntries(labels.map((label, i) => [label, row.c?.[i]?.v ?? null]).filter(pair => pair[1] !== null)));
+  const values = await readRows(tab);
+  if (!values.length) throw new Error("The " + tab + " tab was not found or has no rows");
+  const labels = values[0].map((label, i) => clean(label || "column " + (i + 1)));
+  return values.slice(1).map(row => Object.fromEntries(labels.map((label, i) => [label, row[i] ?? null]).filter(pair => pair[1] !== null)));
 }
 function pick(row, ...names) {
   for (const name of names) if (row[clean(name)] != null) return row[clean(name)];
@@ -37,7 +33,11 @@ function numeric(value) {
 
 export default async function handler(req, res) {
   if (req.method !== "GET") return res.status(405).json({ error: "Method not allowed" });
+  res.setHeader("Cache-Control", "private, no-store, max-age=0");
   try {
+    const permission = req.query?.view === "records" ? "records" : "dashboard";
+    const user = await requireUser(req, res, permission, "view");
+    if (!user) return;
     const [wasteRows, partRows, mappingRows] = await Promise.all([readTab("WasteRecord"), readTab("Part"), readTab("Part.Materials")]);
     const partsById = new Map();
     for (const row of partRows) {
@@ -106,7 +106,6 @@ export default async function handler(req, res) {
       };
     }).filter(record => record.date && (record.partNo || record.produced || record.ng));
 
-    res.setHeader("Cache-Control", "public, s-maxage=300, stale-while-revalidate=600");
     if (req.query?.view === "records") {
       const query = String(req.query.q || "").trim().toLocaleLowerCase("th");
       const from = String(req.query.from || "");
@@ -120,7 +119,7 @@ export default async function handler(req, res) {
     }
     return res.status(200).json({ records, unresolvedPartIds: records.filter(record => record.partIdMissing).length, refreshedAt: new Date().toISOString() });
   } catch (error) {
-    return res.status(502).json({ error: "Unable to read the Google Sheet. Check that its data tabs are viewable by the Vercel function.", detail: error.message });
+    return res.status(502).json({ error: "Unable to read the private Google Sheet. Check the service account and Vercel settings.", detail: error.message });
   }
 }
 
