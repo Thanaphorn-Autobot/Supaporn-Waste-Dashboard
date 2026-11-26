@@ -56,3 +56,36 @@
 .form-error { color:#ad493f !important; font-size:13px; }
 @media(max-width:700px){.export-bar,.database-toolbar,.import-toolbar{align-items:stretch}.export-bar strong{width:100%}.export-bar label,.database-toolbar label,.import-toolbar label{flex:1 1 100%}.system-panel{padding:16px}.auth-dialog{padding:24px}}
 
+
+
+.records-heading-actions{display:flex;flex-direction:column;align-items:flex-end;align-self:stretch;justify-content:space-between;gap:10px}
+.export-trigger{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:42px;padding:0 17px;border:1px solid #176b58;border-radius:10px;background:linear-gradient(135deg,#1b765f,#155f4e);color:#fff;box-shadow:0 5px 12px #176b5824;font:600 12px "IBM Plex Sans Thai",sans-serif;cursor:pointer;transition:transform .18s ease,box-shadow .18s ease,background .18s ease}
+.export-trigger span{font-size:16px;line-height:1}
+.export-trigger:hover{background:linear-gradient(135deg,#23866b,#176b58);box-shadow:0 8px 17px #176b5835;transform:translateY(-2px)}
+.export-trigger:active{transform:translateY(0)}
+.export-trigger:focus-visible{outline:3px solid #a9d2bc;outline-offset:3px}
+.export-trigger:disabled{opacity:.65;cursor:wait;transform:none}
+.export-dialog{width:min(500px,calc(100% - 28px));border:1px solid var(--line);border-radius:18px;padding:28px;background:var(--card);color:var(--ink);box-shadow:0 24px 90px #102b2040}
+.export-dialog::backdrop{background:#12241f80;backdrop-filter:blur(3px)}
+.export-dialog form{position:relative;display:grid;gap:12px}
+.export-dialog .export-close{position:absolute;right:-9px;top:-9px}
+.export-dialog .panel-kicker{margin:0;color:#7d9186}
+.export-dialog h2{margin:0;font-size:21px}
+.export-description{margin:0;color:var(--muted);font-size:12px}
+.export-options{display:grid;gap:10px;margin:8px 0 0;padding:14px;border:1px solid var(--line);border-radius:12px}
+.export-options legend{padding:0 5px;color:#718079;font-size:11px;font-weight:600}
+.export-choice{display:flex;align-items:center;gap:10px;padding:11px;border:1px solid #e5ece6;border-radius:9px;background:#fbfcfb;cursor:pointer}
+.export-choice:has(input:checked){border-color:#91bea4;background:#f1f8f3}
+.export-choice input{accent-color:var(--green)}
+.export-choice span,.export-choice strong,.export-choice small{display:block}
+.export-choice strong{font-size:12px;color:#314b40}
+.export-choice small{margin-top:2px;color:#87948d;font-size:10px}
+.export-date-fields{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:4px 1px 0}
+.export-date-fields label{display:grid;gap:6px;color:#75857c;font-size:11px;font-weight:600}
+.export-date-fields input{min-width:0;width:100%;min-height:40px;padding:8px 10px;border:1px solid #dce6df;border-radius:8px;background:#fff;color:#243a32;font:inherit}
+.export-date-fields input:disabled{background:#f2f5f2;color:#a1aaa4}
+.export-dialog-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:4px}
+.export-dialog-actions .small-action{min-height:42px;padding:0 16px;font:600 12px "IBM Plex Sans Thai",sans-serif}
+.export-dialog-actions .export-trigger{min-width:138px}
+@media(max-width:700px){.records-heading-actions{gap:7px}.export-trigger{min-height:40px;padding:0 13px}.export-dialog{padding:23px 18px}.export-date-fields{grid-template-columns:1fr}}
+@media(prefers-reduced-motion:reduce){.export-trigger{transition:none}}
