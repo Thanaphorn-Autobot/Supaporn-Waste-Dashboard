@@ -1,4 +1,4 @@
-import { readRows } from "./_lib/sheets.js";
+import { readPublicRows } from "./_lib/public-sheets.js";
 const excluded = new Set(["วันที่ผลิต", "date", "production date", "partid", "part no", "partname", "part name", "po no", "จำนวนสั่งผลิต", "จำนวนผลิต", "ค้างผลิต", "ng", "% ng", "remark", "m/c no"]);
 const clean = value => String(value ?? "").trim().toLocaleLowerCase("th").replace(/\s+/g, " ");
 const ratioNumber = new Intl.NumberFormat("en-US", { maximumFractionDigits: 6 });
@@ -16,7 +16,7 @@ function dateValue(value) {
 }
 
 async function readTab(tab) {
-  const values = await readRows(tab);
+  const values = await readPublicRows(tab);
   if (!values.length) throw new Error("The " + tab + " tab was not found or has no rows");
   const labels = values[0].map((label, i) => clean(label || "column " + (i + 1)));
   return values.slice(1).map(row => Object.fromEntries(labels.map((label, i) => [label, row[i] ?? null]).filter(pair => pair[1] !== null)));

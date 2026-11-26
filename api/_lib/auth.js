@@ -3,8 +3,9 @@ import crypto from "node:crypto";
 const cookieName = "spp_admin_session";
 const encode = value => Buffer.from(value).toString("base64url");
 function authSecret() {
-  if (!process.env.AUTH_SECRET) throw new Error("AUTH_SECRET is not configured");
-  return process.env.AUTH_SECRET;
+  const secret = process.env.AUTH_SECRET || process.env.ADMIN_PASSWORD;
+  if (!secret) throw new Error("ADMIN_PASSWORD is not configured");
+  return secret;
 }
 function sign(payload) {
   const body = encode(JSON.stringify(payload));

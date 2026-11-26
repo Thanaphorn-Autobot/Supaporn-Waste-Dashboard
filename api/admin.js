@@ -1,5 +1,6 @@
 import { currentAdmin } from "./_lib/auth.js";
-import { readRows, replaceRows, tabs, writeRows } from "./_lib/sheets.js";
+import { replaceRows, tabs, writeRows } from "./_lib/sheets.js";
+import { readPublicRows } from "./_lib/public-sheets.js";
 
 const key = value => String(value || "").trim().toLocaleLowerCase("th").replace(/\s+/g, " ");
 const json = (res, status, data) => res.status(status).json(data);
@@ -60,12 +61,12 @@ function inspectImport(tab, headers, rows, existing) {
   }
   return { valid: !problems.length, problems: [...new Set(problems)], warnings: [...new Set(warnings)] };
 }
-async function loadExisting() { const data = {}; await Promise.all(tabs.map(async tab => data[tab] = await readRows(tab))); return data; }
+async function loadExisting() { const data = {}; await Promise.all(tabs.map(async tab => data[tab] = await readPublicRows(tab))); return data; }
 export default async function handler(req, res) {
   res.setHeader("Cache-Control", "private, no-store, max-age=0");
   try {
     if (req.method === "GET" && String(req.query?.action || "") === "export") {
-      const rows=await readRows("WasteRecord"), headers=rows[0]||[], dateIdx=headerIndex(headers,["วันที่ผลิต","date","production date"]);
+      const rows=await readPublicRows("WasteRecord"), headers=rows[0]||[], dateIdx=headerIndex(headers,["วันที่ผลิต","date","production date"]);
       const from=String(req.query?.from||""), to=String(req.query?.to||""), all=String(req.query?.all||"")==="true";
       if(!all&&!from&&!to)return json(res,400,{error:"เลือกช่วงวันที่หรือเลือกส่งออกทั้งหมดก่อน"});
       if(from&&to&&from>to)return json(res,400,{error:"วันที่เริ่มต้นต้องไม่อยู่หลังวันที่สิ้นสุด"});
@@ -81,7 +82,7 @@ export default async function handler(req, res) {
       if (action === "sheet" || action === "template") {
         const tab = String(req.query?.tab || "");
         if (!tabs.includes(tab)) return json(res,400,{error:"ไม่พบชีตที่เลือก"});
-        const rows = await readRows(tab);
+        const rows = await readPublicRows(tab);
         return json(res,200,{tab,headers:rows[0]||[],rows:action === "sheet" ? rows.slice(1) : []});
       }
       if (action === "all") return json(res,200,{data:await loadExisting()});
