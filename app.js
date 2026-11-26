@@ -3,7 +3,7 @@ const nf = new Intl.NumberFormat("th-TH", { maximumFractionDigits: 0 });
 const pf = new Intl.NumberFormat("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const wf = new Intl.NumberFormat("th-TH", { maximumFractionDigits: 2 });
 const kgf = new Intl.NumberFormat("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const state = { records: [], unresolved: 0, appliedFrom: "", appliedTo: "", partQuery: "", materialFilter: "", openPartDetail: null, recordRows: [], recordTotal: 0, recordOffset: 0, recordsLoaded: false, recordsBusy: false, user: null, pendingPage: "system-page", importData: null, importReport: null, databaseRows: [] };
+const state = { records: [], unresolved: 0, appliedFrom: "", appliedTo: "", partQuery: "", advancedFilters: { year: "", month: "", defects: [], machines: [], materials: [] }, advancedDraft: null, openPartDetail: null, recordRows: [], recordTotal: 0, recordOffset: 0, recordsLoaded: false, recordsBusy: false, user: null, pendingPage: "system-page", importData: null, importReport: null, databaseRows: [] };
 const monthNames = new Intl.DateTimeFormat("th-TH", { month: "short", year: "2-digit" });
 
 function escapeHTML(value) {
@@ -20,14 +20,50 @@ function getBaseFiltered() {
   return state.records.filter(r => (!state.appliedFrom || r.date >= state.appliedFrom) && (!state.appliedTo || r.date <= state.appliedTo) && (!state.partQuery || partText(r).includes(state.partQuery)));
 }
 function getFiltered() {
-  const rows = getBaseFiltered();
-  return rows.filter(r => (!state.materialFilter || Object.prototype.hasOwnProperty.call(r.materialWasteKg || {}, state.materialFilter)));
+  const filters = state.advancedFilters;
+  return getBaseFiltered().filter(r => {
+    if (filters.year && r.date.slice(0, 4) !== filters.year) return false;
+    if (filters.month && String(Number(r.date.slice(5, 7))) !== filters.month) return false;
+    if (filters.machines.length && !filters.machines.includes(String(r.machineNo || "").trim() || "ไม่ระบุ")) return false;
+    if (filters.materials.length) {
+      const materials = Object.keys(r.materialWasteKg || {});
+      if (!filters.materials.some(name => name === "ไม่ระบุ" ? !materials.length : materials.includes(name))) return false;
+    }
+    return true;
+  }).map(r => {
+    if (!filters.defects.length) return r;
+    const defects = Object.fromEntries(Object.entries(r.defects || {}).filter(([name, count]) => filters.defects.includes(name) && count > 0));
+    const ng = Object.values(defects).reduce((sum, count) => sum + count, 0);
+    const scale = r.ng > 0 ? ng / r.ng : 0;
+    const materialWasteKg = Object.fromEntries(Object.entries(r.materialWasteKg || {}).map(([name, kg]) => [name, kg * scale]));
+    return { ...r, ng, defects, materialWasteKg };
+  });
 }
-function updateMaterialOptions(rows) {
-  const materials = [...new Set(rows.flatMap(r => Object.keys(r.materialWasteKg || {})))].sort((a,b)=>a.localeCompare(b,"th"));
-  if (state.materialFilter && !materials.includes(state.materialFilter)) state.materialFilter = "";
-  $("#material-filter").innerHTML = '<option value="">ทุกวัสดุ</option>' + materials.map(name=>'<option value="' + escapeHTML(name) + '">' + escapeHTML(name) + '</option>').join("");
-  $("#material-filter").value = state.materialFilter;
+function cloneDashboardFilters(filters = state.advancedFilters) {
+  return { year: filters.year, month: filters.month, defects: [...filters.defects], machines: [...filters.machines], materials: [...filters.materials] };
+}
+function renderFilterOptions(hostId, kind, values, selected) {
+  const host = $("#" + hostId);
+  host.innerHTML = values.length ? values.map(value => '<label class="filter-option"><input type="checkbox" data-filter-kind="' + kind + '" value="' + escapeHTML(value) + '" ' + (selected.includes(value) ? "checked" : "") + '><span>' + escapeHTML(value) + '</span></label>').join("") : '<p class="filter-options-empty">ไม่มีตัวเลือก</p>';
+}
+function updateAdvancedFilterOptions() {
+  const years = [...new Set(state.records.map(r => r.date.slice(0, 4)).filter(Boolean))].sort((a,b)=>b.localeCompare(a));
+  const defects = [...new Set(state.records.flatMap(r => Object.keys(r.defects || {})))].sort((a,b)=>a.localeCompare(b,"th"));
+  const machines = [...new Set(state.records.map(r => String(r.machineNo || "").trim() || "ไม่ระบุ"))].sort((a,b)=>a === "ไม่ระบุ" ? 1 : b === "ไม่ระบุ" ? -1 : a.localeCompare(b,"th",{numeric:true}));
+  const allMaterials = [...new Set(state.records.flatMap(r => Object.keys(r.materialWasteKg || {})))].sort((a,b)=>a.localeCompare(b,"th"));
+  if (state.records.some(r => !Object.keys(r.materialWasteKg || {}).length)) allMaterials.push("ไม่ระบุ");
+  const filters = state.advancedDraft || state.advancedFilters;
+  $("#advanced-year").innerHTML = '<option value="">ทุกปี</option>' + years.map(year=>'<option value="' + year + '">' + (Number(year) + 543) + '</option>').join("");
+  $("#advanced-year").value = filters.year;
+  $("#advanced-month").value = filters.month;
+  renderFilterOptions("advanced-defects-options","defects",defects,filters.defects);
+  renderFilterOptions("advanced-machines-options","machines",machines,filters.machines);
+  renderFilterOptions("advanced-materials-options","materials",allMaterials,filters.materials);
+  $("#advanced-filter-count").textContent = activeAdvancedFilterCount() || "";
+  $("#advanced-filter-count").hidden = !activeAdvancedFilterCount();
+}
+function activeAdvancedFilterCount(filters = state.advancedFilters) {
+  return Number(Boolean(filters.year)) + Number(Boolean(filters.month)) + filters.defects.length + filters.machines.length + filters.materials.length;
 }
 function render() {
   const rows = getFiltered();
@@ -40,7 +76,7 @@ function render() {
   $("#range-label").textContent = rows.length ? nf.format(rows.length) + " รายการ" : "ไม่มีข้อมูลในช่วงนี้";
   const dates = rows.map(r => r.date).sort();
   $("#trend-range").textContent = dates.length ? shortDate(dates[0]) + " — " + shortDate(dates.at(-1)) : "";
-  renderTrend(rows); renderDefects(rows); renderHeatmap(rows); renderParts(rows); renderMaterials(rows, state.materialFilter);
+  renderTrend(rows); renderDefects(rows); renderHeatmap(rows); renderParts(rows); renderMaterials(rows, state.advancedFilters.materials);
 }
 function renderTrend(rows) {
   const host = $("#trend-chart"), byMonth = new Map();
@@ -117,7 +153,7 @@ function renderParts(rows) {
 }
 function renderMaterials(rows, selectedMaterial) {
   const total = {};
-  for (const r of rows) for (const [name, kg] of Object.entries(r.materialWasteKg || {})) if (!selectedMaterial || name === selectedMaterial) total[name] = (total[name] || 0) + kg;
+  for (const r of rows) for (const [name, kg] of Object.entries(r.materialWasteKg || {})) if (!selectedMaterial.length || selectedMaterial.includes(name)) total[name] = (total[name] || 0) + kg;
   const items = Object.entries(total).filter(([,kg]) => kg > 0).sort((a,b) => b[1]-a[1]), max = items[0]?.[1] || 1;
   $("#material-chart").innerHTML = items.length ? items.map(([name,kg]) => '<div class="bar-row"><span class="bar-name" title="' + escapeHTML(name) + '">' + escapeHTML(name) + '</span><span class="bar-track"><span class="bar-fill material-fill" style="width:' + Math.max(2,kg/max*100) + '%"></span></span><span class="bar-value">' + kgf.format(kg) + '</span></div>').join("") : '<div class="loading">ไม่มีข้อมูลวัสดุที่คำนวณได้</div>';
 }
@@ -198,7 +234,7 @@ async function loadData() {
       if (key && !parts.has(key)) parts.set(key, [r.partNo,r.partName,r.partSubNo,r.partSubName].filter(Boolean).join(" — "));
     }
     $("#part-options").innerHTML = [...parts.entries()].map(([no,label])=>'<option value="' + escapeHTML(no) + '">' + escapeHTML(label) + '</option>').join("");
-    updateMaterialOptions(getBaseFiltered());
+    updateAdvancedFilterOptions();
     $("#updated-at").textContent = "อัปเดต " + new Intl.DateTimeFormat("th-TH",{hour:"2-digit",minute:"2-digit"}).format(new Date(payload.refreshedAt || Date.now()));
     $("#data-warning").hidden = !state.unresolved;
     if (state.unresolved) $("#data-warning").textContent = "พบ " + nf.format(state.unresolved) + " รายการที่ PartID เป็น #N/A; Dashboard สรุปด้วย Part No จากบันทึกการผลิต";
@@ -215,16 +251,47 @@ function applyDashboardFilters() {
   state.appliedFrom = $("#from-date").value;
   state.appliedTo = $("#to-date").value;
   state.partQuery = $("#part-filter").value.trim().toLocaleLowerCase("th");
-  state.materialFilter = $("#material-filter").value;
-  updateMaterialOptions(getBaseFiltered());
   render();
 }
 $("#part-search-button").addEventListener("click", applyDashboardFilters);
 $("#part-filter").addEventListener("keydown",event=>{if(event.key === "Enter"){event.preventDefault();applyDashboardFilters();}});
 $("#clear-filter").addEventListener("click",()=>{
   $("#from-date").value=""; $("#to-date").value=""; $("#part-filter").value="";
-  state.appliedFrom=""; state.appliedTo=""; state.partQuery=""; state.materialFilter="";
-  updateMaterialOptions(getBaseFiltered()); render();
+  state.appliedFrom=""; state.appliedTo=""; state.partQuery="";
+  state.advancedFilters={year:"",month:"",defects:[],machines:[],materials:[]};
+  state.advancedDraft=cloneDashboardFilters(); updateAdvancedFilterOptions(); render();
+});
+$("#advanced-filter-button").addEventListener("click",()=>{
+  state.advancedDraft=cloneDashboardFilters(); updateAdvancedFilterOptions();
+  $("#advanced-filter-dialog").querySelectorAll("[data-filter-search]").forEach(input=>{input.value="";});
+  $("#advanced-filter-dialog").showModal();
+});
+$("#advanced-filter-dialog").addEventListener("click",event=>{if(event.target===$("#advanced-filter-dialog"))$("#advanced-filter-dialog").close();});
+$("#advanced-filter-close").addEventListener("click",()=>$("#advanced-filter-dialog").close());
+$("#advanced-year").addEventListener("change",event=>{state.advancedDraft.year=event.target.value;});
+$("#advanced-month").addEventListener("change",event=>{state.advancedDraft.month=event.target.value;});
+$("#advanced-filter-dialog").addEventListener("change",event=>{
+  const kind=event.target.dataset.filterKind;
+  if(!kind)return;
+  const checked=[...$("#advanced-filter-dialog").querySelectorAll('[data-filter-kind="'+kind+'"]:checked')].map(input=>input.value);
+  state.advancedDraft[kind]=checked;
+});
+$("#advanced-filter-dialog").addEventListener("input",event=>{
+  const kind=event.target.dataset.filterSearch;
+  if(!kind)return;
+  const query=event.target.value.trim().toLocaleLowerCase("th");
+  $("#advanced-"+kind+"-options").querySelectorAll(".filter-option").forEach(option=>{option.hidden=!option.textContent.toLocaleLowerCase("th").includes(query);});
+});
+$("#clear-advanced-filters").addEventListener("click",()=>{
+  state.advancedDraft={year:"",month:"",defects:[],machines:[],materials:[]};
+  updateAdvancedFilterOptions();
+  $("#advanced-filter-dialog").querySelectorAll("[data-filter-search]").forEach(input=>{input.value="";});
+});
+$("#apply-advanced-filters").addEventListener("click",()=>{
+  state.advancedDraft.year=$("#advanced-year").value;
+  state.advancedDraft.month=$("#advanced-month").value;
+  state.advancedFilters=cloneDashboardFilters(state.advancedDraft);
+  updateAdvancedFilterOptions(); render(); $("#advanced-filter-dialog").close();
 });
 $("#records-form").addEventListener("submit",event=>{event.preventDefault();loadRecordPage(0);});
 $("#clear-record-filters").addEventListener("click",()=>{$("#record-search").value="";$("#records-from").value="";$("#records-to").value="";loadRecordPage(0);});
