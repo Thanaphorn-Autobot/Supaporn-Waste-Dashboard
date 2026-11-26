@@ -89,3 +89,39 @@
 .export-dialog-actions .export-trigger{min-width:138px}
 @media(max-width:700px){.records-heading-actions{gap:7px}.export-trigger{min-height:40px;padding:0 13px}.export-dialog{padding:23px 18px}.export-date-fields{grid-template-columns:1fr}}
 @media(prefers-reduced-motion:reduce){.export-trigger{transition:none}}
+
+
+.advanced-filter-button{height:35px;display:inline-flex;flex:0 0 auto;align-items:center;justify-content:center;gap:8px;padding:0 12px;border:1px solid #193129;border-radius:9px;background:#172c2a;color:#fff;font:600 11px "IBM Plex Sans Thai",sans-serif;white-space:nowrap;cursor:pointer;transition:transform .16s ease,background .16s ease,box-shadow .16s ease}
+.advanced-filter-button:hover{background:#214a3c;box-shadow:0 4px 12px #173c2e24;transform:translateY(-2px)}
+.advanced-filter-button:active{transform:translateY(0)}
+.advanced-filter-button:focus-visible{outline:3px solid #a9d2bc;outline-offset:3px}
+.advanced-filter-button svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.advanced-filter-count{min-width:17px;height:17px;display:grid;place-items:center;padding:0 4px;border-radius:9px;background:#92c6a8;color:#163d2f;font:700 9px Manrope,sans-serif}
+.advanced-filter-dialog{position:fixed;inset:0 0 0 auto;margin:0;width:min(430px,100vw);height:100dvh;max-height:none;padding:0;border:0;border-left:1px solid var(--line);border-radius:16px 0 0 16px;background:var(--card);color:var(--ink);box-shadow:-16px 0 55px #132c2033;overflow:hidden}
+.advanced-filter-dialog[open]{display:block;animation:filter-drawer-in .2s ease-out}
+.advanced-filter-dialog::backdrop{background:#12241f70;backdrop-filter:blur(2px)}
+.advanced-filter-panel{height:100%;display:flex;flex-direction:column;min-height:0}
+.advanced-filter-header{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding:24px 23px 18px;border-bottom:1px solid var(--line)}
+.advanced-filter-header .panel-kicker{margin:0 0 5px;color:#7d9186}
+.advanced-filter-header h2{margin:0;font-size:20px}
+.advanced-filter-header p:last-child{margin:4px 0 0;color:var(--muted);font-size:11px}
+.advanced-filter-header .dialog-close{flex:0 0 auto}
+.advanced-filter-content{flex:1;min-height:0;overflow:auto;padding:0 23px 20px}
+.advanced-filter-section{padding:17px 0;border-bottom:1px solid #edf0ed}
+.advanced-filter-section h3{margin:0 0 10px;color:#314b40;font-size:13px;font-weight:600}
+.filter-period-fields{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.filter-period-fields label{display:grid;gap:5px;color:#75857c;font-size:10px;font-weight:600}
+.filter-period-fields select,.filter-list-search{width:100%;height:38px;padding:0 10px;border:1px solid #dce6df;border-radius:8px;background:#fff;color:#30463d;font:500 12px "IBM Plex Sans Thai",sans-serif;outline:none}
+.filter-period-fields select:focus,.filter-list-search:focus{border-color:#78ad94;box-shadow:0 0 0 3px #eaf4ed}
+.filter-list-search{margin-bottom:8px}
+.filter-option-list{max-height:158px;overflow:auto;display:grid;gap:2px;padding:4px;border:1px solid #edf1ed;border-radius:8px;background:#fbfcfb;scrollbar-gutter:stable}
+.filter-option{display:flex;align-items:center;gap:9px;min-height:30px;padding:5px 7px;border-radius:6px;color:#52685d;font-size:11px;font-weight:400;cursor:pointer}
+.filter-option:hover{background:#eef6f0}
+.filter-option input{margin:0;accent-color:var(--green)}
+.filter-option span{min-width:0;overflow-wrap:anywhere}
+.filter-options-empty{margin:5px;color:#89958e;font-size:11px}
+.advanced-filter-footer{display:flex;justify-content:space-between;gap:10px;padding:14px 23px calc(14px + env(safe-area-inset-bottom));border-top:1px solid var(--line);background:var(--card)}
+.advanced-filter-footer button{min-height:40px;padding:0 15px;font:600 11px "IBM Plex Sans Thai",sans-serif}
+@keyframes filter-drawer-in{from{transform:translateX(22px);opacity:.7}to{transform:translateX(0);opacity:1}}
+@media(max-width:700px){.advanced-filter-button{flex:1}.advanced-filter-dialog{width:min(390px,100vw);border-radius:14px 0 0 14px}.advanced-filter-header{padding:19px 17px 15px}.advanced-filter-content{padding:0 17px 16px}.advanced-filter-footer{padding-left:17px;padding-right:17px}}
+@media(prefers-reduced-motion:reduce){.advanced-filter-button{transition:none}.advanced-filter-dialog[open]{animation:none}}
