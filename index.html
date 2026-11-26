@@ -86,7 +86,7 @@
         <section id="records-page" class="page-view" hidden>
           <section class="page-heading records-heading">
           <div><p class="eyebrow">WASTE LOG <span>•</span> PRODUCTION RECORDS</p><h1>รายการของเสีย <span>ค้นหาและดูรายละเอียด</span></h1><p class="intro">ค้นหารายการด้วยชิ้นงานหรือสาเหตุ พร้อมกรองตามวันที่</p></div>
-            <span id="record-count" class="unit-tag">0 รายการ</span>
+            <div class="records-heading-actions"><button id="export-button" class="export-trigger" type="button"><span aria-hidden="true">⇩</span> Export</button><span id="record-count" class="unit-tag">0 รายการ</span></div>
           </section>
           <form id="records-form" class="filterbar records-filterbar" aria-label="ค้นหาและกรองรายการของเสีย">
             <label class="record-search">ค้นหา<input id="record-search" type="search" placeholder="Part No, ชื่อชิ้นงาน, Part Sub หรือสาเหตุ" /></label>
@@ -95,7 +95,7 @@
             <button class="search-submit" type="submit">ค้นหา</button>
             <button class="clear-filter" id="clear-record-filters" type="button">ล้างตัวกรอง</button>
           </form>
-          <div class="export-bar"><strong>ส่งออกข้อมูล WasteRecord</strong><label>ตั้งแต่<input id="export-from" type="date" /></label><label>ถึง<input id="export-to" type="date" /></label><label class="export-all-label"><input id="export-all" type="checkbox" /> ทั้งหมด</label><button id="export-button" class="small-action" type="button">Export</button></div>
+          
           <section class="panel table-panel records-panel">
             <div class="records-scroll"><table><thead><tr><th>วันที่ผลิต</th><th>Part No</th><th>ชื่อชิ้นงาน</th><th>Part Sub No</th><th>Part Sub Name</th><th class="number">จำนวนผลิต</th><th class="number">NG</th><th class="number">%NG</th><th></th></tr></thead><tbody id="records-table"><tr><td colspan="9" class="loading">กำลังโหลด…</td></tr></tbody></table></div>
             <div class="pagination"><span id="page-summary">กำลังโหลดรายการล่าสุด…</span><div><button class="small-action" id="records-prev" type="button" disabled>ก่อนหน้า</button><button class="small-action" id="records-next" type="button" disabled>ถัดไป</button></div></div>
@@ -118,7 +118,7 @@
 
       <footer><span>Plastic Waste Monitor</span><span>ข้อมูลส่วนบุคคลและรายละเอียดการผลิตแสดงเมื่อเปิดการ์ดรายการ</span></footer>
     </div>
-    <dialog id="detail-dialog" class="detail-dialog"><form method="dialog"><button class="dialog-close" aria-label="ปิด">×</button></form><div id="detail-content"></div></dialog>
+    <dialog id="export-dialog" class="export-dialog" aria-labelledby="export-title"><form id="export-form"><button class="dialog-close export-close" type="button" aria-label="ปิด">×</button><p class="panel-kicker">WASTE RECORD</p><h2 id="export-title">ส่งออกข้อมูล</h2><p class="export-description">เลือกข้อมูลจากชีต WasteRecord ที่ต้องการดาวน์โหลดเป็น CSV</p><fieldset class="export-options"><legend>ช่วงข้อมูล</legend><label class="export-choice"><input type="radio" name="export-range" value="all" checked /><span><strong>ส่งออกทั้งหมด</strong><small>ดาวน์โหลดข้อมูลทุกวันที่มีในระบบ</small></span></label><label class="export-choice"><input type="radio" name="export-range" value="range" /><span><strong>เลือกช่วงวันที่</strong><small>ระบุวันที่เริ่มต้นและสิ้นสุดที่ต้องการ</small></span></label><div class="export-date-fields"><label>ตั้งแต่<input id="export-from" type="date" disabled /></label><label>ถึง<input id="export-to" type="date" disabled /></label></div></fieldset><p id="export-error" class="form-error" hidden></p><div class="export-dialog-actions"><button id="export-cancel" class="small-action" type="button">ยกเลิก</button><button class="export-trigger" type="submit">ดาวน์โหลด CSV</button></div></form></dialog><dialog id="detail-dialog" class="detail-dialog"><form method="dialog"><button class="dialog-close" aria-label="ปิด">×</button></form><div id="detail-content"></div></dialog>
     <dialog id="login-dialog" class="auth-dialog"><form id="login-form"><p class="panel-kicker">SUPAPORN WASTE DASHBOARD</p><h2>เข้าสู่ระบบ Admin</h2><label>รหัสผ่าน<input id="login-password" type="password" autocomplete="current-password" required /></label><p id="login-error" class="form-error" hidden></p><button class="search-submit" type="submit">เข้าสู่ระบบ</button><button id="login-cancel" class="small-action" type="button">กลับหน้า Dashboard</button></form></dialog>
     <script src="/app.js"></script>
   </body>
