@@ -390,10 +390,10 @@ $("#download-template").addEventListener("click",async()=>{
   catch(error){alert(error.message);}
 });
 $("#download-all").addEventListener("click",async()=>{
-  try{const {data}=await apiJSON("/api/admin?action=all");const link=document.createElement("a");link.href=URL.createObjectURL(new Blob(["\\uFEFF"+JSON.stringify(data,null,2)],{type:"application/json;charset=utf-8"}));link.download="database-export.json";link.click();URL.revokeObjectURL(link.href);}
+  try{const {data}=await apiJSON("/api/admin?action=all");const link=document.createElement("a");link.href=URL.createObjectURL(new Blob(["\uFEFF"+JSON.stringify(data,null,2)],{type:"application/json;charset=utf-8"}));link.download="database-export.json";link.click();URL.revokeObjectURL(link.href);}
   catch(error){alert(error.message);}
 });
-function parseCSV(source){const text=source.replace(/^\\uFEFF/,"");const rows=[];let row=[],cell="",quoted=false;for(let i=0;i<text.length;i++){const c=text[i];if(quoted){if(c==='"'&&text[i+1]==='"'){cell+='"';i++;}else if(c==='"')quoted=false;else cell+=c;}else if(c==='"')quoted=true;else if(c===","){row.push(cell);cell="";}else if(c==="\\n"){row.push(cell.replace(/\\r$/, ""));if(row.some(value=>value!==""))rows.push(row);row=[];cell="";}else cell+=c;}row.push(cell.replace(/\\r$/, ""));if(row.some(value=>value!==""))rows.push(row);return {headers:rows[0]||[],rows:rows.slice(1)};}
+function parseCSV(source){const text=source.replace(/^\uFEFF/,"");const rows=[];let row=[],cell="",quoted=false;for(let i=0;i<text.length;i++){const c=text[i];if(quoted){if(c==='"'&&text[i+1]==='"'){cell+='"';i++;}else if(c==='"')quoted=false;else cell+=c;}else if(c==='"')quoted=true;else if(c===","){row.push(cell);cell="";}else if(c==="\n"){row.push(cell.replace(/\r$/, ""));if(row.some(value=>value!==""))rows.push(row);row=[];cell="";}else cell+=c;}row.push(cell.replace(/\r$/, ""));if(row.some(value=>value!==""))rows.push(row);return {headers:rows[0]||[],rows:rows.slice(1)};}
 $("#preview-import").addEventListener("click",async()=>{
   const file=$("#import-file").files[0],tab=$("#database-sheet").value;
   if(!file||!tab)return;
