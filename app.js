@@ -347,7 +347,25 @@ async function loadSystemPage() {
   const tabs=["Part","Material","Part.Materials","Machine","WasteRecord"];
   select.innerHTML='<option value="">เลือกชีต</option>'+tabs.map(tab=>'<option value="'+escapeHTML(tab)+'">'+escapeHTML(tab)+'</option>').join("");
   if(tabs.includes(current))select.value=current;
+  syncDatabaseControls();
 }
+function syncDatabaseControls() {
+  const hasSheet=Boolean($("#database-sheet").value), hasFile=Boolean($("#import-file").files.length);
+  $("#load-database").disabled=!hasSheet;
+  $("#download-template").disabled=!hasSheet;
+  $("#preview-import").disabled=!(hasSheet&&hasFile);
+}
+function resetImportPreview() {
+  state.importData=null; state.importReport=null;
+  $("#import-report").hidden=true; $("#import-report").innerHTML="";
+  $("#import-confirm-row").hidden=true; $("#commit-import").disabled=true;
+}
+$("#database-sheet").addEventListener("change",()=>{
+  state.databaseRows=[]; $("#database-preview").innerHTML='<p class="database-preview-empty">เลือกชีตแล้วกด “แสดงข้อมูล” เพื่อดูตัวอย่าง</p>';
+  $("#import-file").value=""; resetImportPreview(); syncDatabaseControls();
+});
+$("#import-file").addEventListener("change",()=>{resetImportPreview();syncDatabaseControls();});
+$("#import-mode").addEventListener("change",resetImportPreview);
 function csvEscape(value){const text=String(value??"");return /[",\r\n]/.test(text)?'"'+text.replace(/"/g,'""')+'"':text;}
 function saveCSV(filename,headers,rows){const csv="\uFEFF"+[headers,...rows].map(row=>row.map(csvEscape).join(",")).join("\r\n");const link=document.createElement("a");link.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));link.download=filename;link.click();URL.revokeObjectURL(link.href);}
 $("#export-button").addEventListener("click",()=>{$("#export-error").hidden=true;$("#export-dialog").showModal();});
@@ -356,11 +374,53 @@ $("#export-cancel").addEventListener("click",()=>$("#export-dialog").close());
 $(".export-close").addEventListener("click",()=>$("#export-dialog").close());
 $("#export-form").addEventListener("change",event=>{if(event.target.name!=="export-range")return;const ranged=event.target.value==="range";$("#export-from").disabled=!ranged;$("#export-to").disabled=!ranged;});
 $("#export-form").addEventListener("submit",async event=>{event.preventDefault();const ranged=$("#export-form input[name=\"export-range\"]:checked").value==="range",from=$("#export-from").value,to=$("#export-to").value,error=$("#export-error");error.hidden=true;if(ranged&&!from&&!to){error.textContent="เลือกวันที่เริ่มต้นหรือวันที่สิ้นสุดอย่างน้อยหนึ่งรายการ";error.hidden=false;return;}if(ranged&&from&&to&&from>to){error.textContent="วันที่เริ่มต้นต้องไม่อยู่หลังวันที่สิ้นสุด";error.hidden=false;return;}const submit=$("#export-form button[type=\"submit\"]");submit.disabled=true;submit.textContent="กำลังเตรียมไฟล์…";try{const params=new URLSearchParams({action:"export",all:String(!ranged),from:ranged?from:"",to:ranged?to:""});const result=await apiJSON("/api/admin?"+params);saveCSV("WasteRecord-export.csv",result.headers,result.rows);$("#export-dialog").close();}catch(error){const message=$("#export-error");message.textContent=error.message;message.hidden=false;}finally{submit.disabled=false;submit.textContent="ดาวน์โหลด CSV";}});
-$("#load-database").addEventListener("click",async()=>{const tab=$("#database-sheet").value;if(!tab)return;try{const {headers,rows}=await apiJSON("/api/admin?action=sheet&tab="+encodeURIComponent(tab));state.databaseRows=[headers,...rows];$("#database-preview").innerHTML='<div class="table-scroll"><table><thead><tr>'+headers.map(h=>'<th>'+escapeHTML(h)+'</th>').join("")+'</tr></thead><tbody>'+rows.slice(0,100).map(row=>'<tr>'+headers.map((_,i)=>'<td>'+escapeHTML(row[i]??"")+'</td>').join("")+'</tr>').join("")+'</tbody></table></div><small>แสดงตัวอย่าง '+Math.min(rows.length,100)+' จาก '+rows.length+' แถว</small>'; }catch(error){$("#database-preview").textContent=error.message;}});
-$("#download-template").addEventListener("click",async()=>{const tab=$("#database-sheet").value;if(!tab)return;try{const {headers}=await apiJSON("/api/admin?action=template&tab="+encodeURIComponent(tab));saveCSV(tab+"-template.csv",headers,[]);}catch(error){alert(error.message);}});
-$("#download-all").addEventListener("click",async()=>{try{const {data}=await apiJSON("/api/admin?action=all");const link=document.createElement("a");link.href=URL.createObjectURL(new Blob(["\uFEFF"+JSON.stringify(data,null,2)],{type:"application/json;charset=utf-8"}));link.download="database-export.json";link.click();URL.revokeObjectURL(link.href);}catch(error){alert(error.message);}});
-function parseCSV(source){const text=source.replace(/^\uFEFF/,"");const rows=[];let row=[],cell="",quoted=false;for(let i=0;i<text.length;i++){const c=text[i];if(quoted){if(c==='"'&&text[i+1]==='"'){cell+='"';i++;}else if(c==='"')quoted=false;else cell+=c;}else if(c==='"')quoted=true;else if(c===","){row.push(cell);cell="";}else if(c==="\n"){row.push(cell.replace(/\r$/, ""));if(row.some(value=>value!==""))rows.push(row);row=[];cell="";}else cell+=c;}row.push(cell.replace(/\r$/, ""));if(row.some(value=>value!==""))rows.push(row);return {headers:rows[0]||[],rows:rows.slice(1)};}
-$("#preview-import").addEventListener("click",async()=>{const file=$("#import-file").files[0],tab=$("#database-sheet").value;if(!file||!tab){alert("เลือกชีตและไฟล์ CSV ก่อน");return;}try{const parsed=parseCSV(await file.text()),result=await apiJSON("/api/admin",{method:"POST",body:JSON.stringify({action:"preview-import",tab,mode:$("#import-mode").value,...parsed})});state.importData={tab,mode:$("#import-mode").value,...parsed};state.importReport=result.report;const report=result.report;$("#import-report").hidden=false;$("#import-report").innerHTML='<strong>ตรวจพบ '+result.rowCount+' แถว</strong>'+(report.problems.length?'<p class="form-error">ข้อผิดพลาด: '+report.problems.map(escapeHTML).join(" · ")+'</p>':'<p>ไม่พบข้อมูลซ้ำหรือรูปแบบผิด</p>')+(report.warnings.length?'<p>รายการเตือน: '+report.warnings.map(escapeHTML).join(" · ")+'</p>':'');$("#commit-import").disabled=!report.valid;}catch(error){$("#import-report").hidden=false;$("#import-report").textContent=error.message;$("#commit-import").disabled=true;}});
-$("#commit-import").addEventListener("click",async()=>{if(!state.importData||!state.importReport?.valid)return;const warning=state.importReport.warnings.length>0;const text=state.importData.mode==="replace"?"การนำเข้าแบบแทนที่จะลบข้อมูลเดิมทั้งชีตและใส่ข้อมูลจากไฟล์แทน":"ยืนยันเพิ่มข้อมูลจากไฟล์ต่อท้ายชีต";if(!confirm(text+(warning?" และมีรายการเตือนที่ตรวจพบ":"")+" ต้องการดำเนินการหรือไม่?"))return;try{await apiJSON("/api/admin",{method:"POST",body:JSON.stringify({action:"import",...state.importData,acceptWarnings:warning})});alert("นำเข้าข้อมูลเรียบร้อย");$("#import-file").value="";state.importData=null;state.importReport=null;$("#import-report").hidden=true;$("#commit-import").disabled=true;$("#load-database").click();loadData();}catch(error){if(error.payload?.report){state.importReport=error.payload.report;$("#import-report").hidden=false;$("#import-report").innerHTML='<p>'+error.message+'</p>'+error.payload.report.warnings.map(escapeHTML).join(" · ");}else alert(error.message);}});
+$("#load-database").addEventListener("click",async()=>{
+  const tab=$("#database-sheet").value;if(!tab)return;
+  const button=$("#load-database");button.disabled=true;button.textContent="กำลังโหลด…";
+  try{
+    const {headers,rows}=await apiJSON("/api/admin?action=sheet&tab="+encodeURIComponent(tab));
+    state.databaseRows=[headers,...rows];
+    $("#database-preview").innerHTML='<div class="table-scroll"><table><thead><tr>'+headers.map(h=>'<th>'+escapeHTML(h)+'</th>').join("")+'</tr></thead><tbody>'+rows.slice(0,100).map(row=>'<tr>'+headers.map((_,i)=>'<td>'+escapeHTML(row[i]??"")+'</td>').join("")+'</tr>').join("")+'</tbody></table></div><small>แสดงตัวอย่าง '+Math.min(rows.length,100)+' จาก '+rows.length+' แถว</small>';
+  }catch(error){$("#database-preview").textContent=error.message;}
+  finally{button.textContent="แสดงข้อมูล";syncDatabaseControls();}
+});
+$("#download-template").addEventListener("click",async()=>{
+  const tab=$("#database-sheet").value;if(!tab)return;
+  try{const {headers}=await apiJSON("/api/admin?action=template&tab="+encodeURIComponent(tab));saveCSV(tab+"-template.csv",headers,[]);}
+  catch(error){alert(error.message);}
+});
+$("#download-all").addEventListener("click",async()=>{
+  try{const {data}=await apiJSON("/api/admin?action=all");const link=document.createElement("a");link.href=URL.createObjectURL(new Blob(["\\uFEFF"+JSON.stringify(data,null,2)],{type:"application/json;charset=utf-8"}));link.download="database-export.json";link.click();URL.revokeObjectURL(link.href);}
+  catch(error){alert(error.message);}
+});
+function parseCSV(source){const text=source.replace(/^\\uFEFF/,"");const rows=[];let row=[],cell="",quoted=false;for(let i=0;i<text.length;i++){const c=text[i];if(quoted){if(c==='"'&&text[i+1]==='"'){cell+='"';i++;}else if(c==='"')quoted=false;else cell+=c;}else if(c==='"')quoted=true;else if(c===","){row.push(cell);cell="";}else if(c==="\\n"){row.push(cell.replace(/\\r$/, ""));if(row.some(value=>value!==""))rows.push(row);row=[];cell="";}else cell+=c;}row.push(cell.replace(/\\r$/, ""));if(row.some(value=>value!==""))rows.push(row);return {headers:rows[0]||[],rows:rows.slice(1)};}
+$("#preview-import").addEventListener("click",async()=>{
+  const file=$("#import-file").files[0],tab=$("#database-sheet").value;
+  if(!file||!tab)return;
+  resetImportPreview();
+  const button=$("#preview-import");button.disabled=true;button.textContent="กำลังตรวจสอบไฟล์…";
+  try{
+    const parsed=parseCSV(await file.text()),result=await apiJSON("/api/admin",{method:"POST",body:JSON.stringify({action:"preview-import",tab,mode:$("#import-mode").value,...parsed})});
+    state.importData={tab,mode:$("#import-mode").value,...parsed};state.importReport=result.report;
+    const report=result.report;$("#import-report").hidden=false;
+    $("#import-report").innerHTML='<strong>ตรวจพบ '+result.rowCount+' แถว</strong>'+(report.problems.length?'<p class="form-error">ข้อผิดพลาด: '+report.problems.map(escapeHTML).join(" · ")+'</p>':'<p>ไม่พบข้อมูลซ้ำหรือรูปแบบผิด</p>')+(report.warnings.length?'<p>รายการเตือน: '+report.warnings.map(escapeHTML).join(" · ")+'</p>':'');
+    $("#commit-import").disabled=!report.valid;$("#import-confirm-row").hidden=!report.valid;
+  }catch(error){$("#import-report").hidden=false;$("#import-report").textContent=error.message;$("#commit-import").disabled=true;$("#import-confirm-row").hidden=true;}
+  finally{button.textContent="3. ตรวจสอบไฟล์ก่อนนำเข้า";syncDatabaseControls();}
+});
+$("#commit-import").addEventListener("click",async()=>{
+  if(!state.importData||!state.importReport?.valid)return;
+  const warning=state.importReport.warnings.length>0;
+  const text=state.importData.mode==="replace"?"การนำเข้าแบบแทนที่จะลบข้อมูลเดิมทั้งชีตและใส่ข้อมูลจากไฟล์แทน":"ยืนยันเพิ่มข้อมูลจากไฟล์ต่อท้ายชีต";
+  if(!confirm(text+(warning?" และมีรายการเตือนที่ตรวจพบ":"")+" ต้องการดำเนินการหรือไม่?"))return;
+  const button=$("#commit-import");button.disabled=true;button.textContent="กำลังนำเข้า…";
+  try{
+    await apiJSON("/api/admin",{method:"POST",body:JSON.stringify({action:"import",...state.importData,acceptWarnings:warning})});
+    alert("นำเข้าข้อมูลเรียบร้อย");$("#import-file").value="";resetImportPreview();$("#load-database").click();loadData();
+  }catch(error){
+    if(error.payload?.report){state.importReport=error.payload.report;$("#import-report").hidden=false;$("#import-report").innerHTML='<p>'+error.message+'</p>'+error.payload.report.warnings.map(escapeHTML).join(" · ");$("#commit-import").disabled=!state.importReport.valid;$("#import-confirm-row").hidden=!state.importReport.valid;}
+    else alert(error.message);
+  }finally{button.textContent="ยืนยันนำเข้า";if(state.importReport?.valid)button.disabled=false;syncDatabaseControls();}
+});
 loadData();
 
