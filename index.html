@@ -106,10 +106,22 @@
         <section id="system-page" class="page-view" hidden>
           <section class="page-heading records-heading"><div><p class="eyebrow">SYSTEM DATA <span>•</span> ADMIN</p><h1>ข้อมูลระบบ</h1><p class="intro">จัดการและนำเข้าข้อมูลหลังบ้าน</p></div></section>
           <section id="database-management" class="panel system-panel" hidden>
-            <div class="panel-head"><div><p class="panel-kicker">DATABASE</p><h2>จัดการฐานข้อมูล</h2></div></div>
-            <div class="database-toolbar"><label>เลือกชีต<select id="database-sheet"><option value="">เลือกชีต</option></select></label><button id="load-database" class="small-action" type="button">ดูข้อมูล</button><button id="download-template" class="small-action" type="button">ดาวน์โหลดแบบฟอร์ม CSV</button><button id="download-all" class="small-action" type="button">ดาวน์โหลดข้อมูลทั้งหมด</button></div>
-            <div class="import-toolbar"><label>ไฟล์ CSV สำหรับนำเข้า<input id="import-file" type="file" accept=".csv,text/csv" /></label><label>วิธีนำเข้า<select id="import-mode"><option value="replace">แทนที่ข้อมูลทั้งชีต</option><option value="append">เพิ่มต่อท้าย</option></select></label><button id="preview-import" class="small-action" type="button">ตรวจสอบก่อนนำเข้า</button><button id="commit-import" class="search-submit" type="button" disabled>ยืนยันนำเข้า</button></div>
-            <div id="import-report" class="import-report" hidden></div><div id="database-preview" class="database-preview"></div>
+            <div class="panel-head database-panel-heading"><div><p class="panel-kicker">DATABASE</p><h2>จัดการฐานข้อมูล</h2><p>เลือกชีตเพื่อดูข้อมูลหรือดาวน์โหลดแบบฟอร์ม จากนั้นนำเข้าไฟล์ CSV ได้เป็นขั้นตอน</p></div></div>
+            <div class="database-workflow">
+              <section class="database-step database-browse-step">
+                <div class="database-step-heading"><span class="database-step-number">1</span><div><h3>เลือกและจัดการชีต</h3><p>เลือกชีตที่ต้องการดูหรือดาวน์โหลดแบบฟอร์ม</p></div></div>
+                <div class="database-select-row"><label for="database-sheet">ชีตข้อมูล<select id="database-sheet"><option value="">เลือกชีตที่ต้องการ</option></select></label><button id="load-database" class="search-submit" type="button" disabled>แสดงข้อมูล</button></div>
+                <div class="database-downloads"><div><strong>ดาวน์โหลด</strong><small>เลือกแบบฟอร์ม CSV หรือสำรองข้อมูลทุกชีตเป็น JSON</small></div><button id="download-template" class="small-action" type="button" disabled>แบบฟอร์ม CSV ของชีตนี้</button><button id="download-all" class="small-action" type="button">ข้อมูลทุกชีต (JSON)</button></div>
+              </section>
+              <section class="database-step database-import-step">
+                <div class="database-step-heading"><span class="database-step-number">2</span><div><h3>นำเข้าข้อมูลจาก CSV</h3><p>เลือกชีตและไฟล์ แล้วตรวจสอบก่อนยืนยันนำเข้า</p></div></div>
+                <div class="database-import-fields"><label for="import-file">1. เลือกไฟล์ CSV<input id="import-file" type="file" accept=".csv,text/csv" /></label><label for="import-mode">2. เลือกวิธีนำเข้า<select id="import-mode"><option value="replace">แทนที่ข้อมูลเดิมทั้งชีต</option><option value="append">เพิ่มข้อมูลต่อท้าย</option></select></label></div>
+                <div class="database-import-action"><button id="preview-import" class="small-action" type="button" disabled>3. ตรวจสอบไฟล์ก่อนนำเข้า</button><small>ระบบจะแจ้งข้อมูลซ้ำและรายการที่ไม่ตรงกับฐานข้อมูล</small></div>
+                <div id="import-report" class="import-report" hidden></div>
+                <div id="import-confirm-row" class="import-confirm-row" hidden><span>ตรวจสอบผ่านแล้ว กดยืนยันเพื่อนำเข้าข้อมูล</span><button id="commit-import" class="search-submit" type="button" disabled>ยืนยันนำเข้า</button></div>
+              </section>
+            </div>
+            <div id="database-preview" class="database-preview"><p class="database-preview-empty">เลือกชีตแล้วกด “แสดงข้อมูล” เพื่อดูตัวอย่าง</p></div>
           </section>
         </section>
 
